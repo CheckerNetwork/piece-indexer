@@ -1,6 +1,6 @@
 # syntax = docker/dockerfile:1
 
-FROM node:23.6.0-slim AS base
+FROM node:23.6.1-slim AS base
 LABEL fly_launch_runtime="nodejs"
 WORKDIR /app
 ENV NODE_ENV=production
