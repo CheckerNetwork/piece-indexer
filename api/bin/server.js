@@ -1,8 +1,6 @@
 import '../lib/instrument.js'
 
-import http from 'node:http'
-import { once } from 'node:events'
-import { createHandler } from '../lib/handler.js'
+import { createApp } from '../lib/app.js'
 import { RedisRepository } from '@filecoin-station/spark-piece-indexer-repository'
 import { Redis } from 'ioredis'
 
@@ -27,15 +25,13 @@ const redis = new Redis({
 await redis.connect()
 const repository = new RedisRepository(redis)
 
-const logger = {
-  error: console.error,
-  info: console.info,
-  request: ['1', 'true'].includes(requestLogging) ? console.info : () => {}
-}
-
-const handler = createHandler({ repository, domain, logger })
-const server = http.createServer(handler)
+const app = createApp({
+  repository,
+  domain,
+  logger: {
+    level: ['1', 'true'].includes(requestLogging) ? 'info' : 'error'
+  }
+})
 console.log('Starting the http server on host %j port %s', HOST, PORT)
-server.listen(Number(PORT), HOST)
-await once(server, 'listening')
-console.log(`http://${HOST}:${server.address().port}`)
+const baseUrl = await app.listen({ host: HOST, port: Number(PORT) })
+console.log(baseUrl)

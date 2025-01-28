@@ -1,14 +1,9 @@
 import { RedisRepository } from '@filecoin-station/spark-piece-indexer-repository'
-import createDebug from 'debug'
 import { Redis } from 'ioredis'
 import assert from 'node:assert'
-import { once } from 'node:events'
-import http from 'node:http'
 import { after, before, beforeEach, describe, it } from 'node:test'
-import { createHandler } from '../lib/handler.js'
-import { assertResponseStatus, getPort } from './test-helpers.js'
-
-const debug = createDebug('test')
+import { createApp } from '../lib/app.js'
+import { assertResponseStatus } from './test-helpers.js'
 
 describe('HTTP request handler', () => {
   /** @type {Redis} */
@@ -16,8 +11,8 @@ describe('HTTP request handler', () => {
   /** @type {RedisRepository} */
   let repository
 
-  /** @type {http.Server} */
-  let server
+  /** @type {import('fastify').FastifyInstance} */
+  let app
   /** @type {string} */
   let baseUrl
 
@@ -25,20 +20,16 @@ describe('HTTP request handler', () => {
     redis = new Redis({ db: 1 })
     repository = new RedisRepository(redis)
 
-    const handler = createHandler({
+    app = createApp({
       repository,
-      domain: '127.0.0.1',
+      domain: false,
       logger: {
-        info: debug,
-        error: console.error,
-        request: debug
+        level: process.env.DEBUG === '*' || process.env.DEBUG?.includes('test')
+          ? 'debug'
+          : 'error'
       }
     })
-
-    server = http.createServer(handler)
-    server.listen()
-    await once(server, 'listening')
-    baseUrl = `http://127.0.0.1:${getPort(server)}`
+    baseUrl = await app.listen()
   })
 
   beforeEach(async () => {
@@ -46,8 +37,7 @@ describe('HTTP request handler', () => {
   })
 
   after(async () => {
-    server.closeAllConnections()
-    server.close()
+    await app.close()
     await redis?.disconnect()
   })
 
