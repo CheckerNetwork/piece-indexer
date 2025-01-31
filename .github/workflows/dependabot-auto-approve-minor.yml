@@ -12,8 +12,11 @@ jobs:
       matrix:
         dependencyStartsWith:
           - '@sentry/'
+          - '@types/'
           - standard
           - typescript
+          - prettier
+          - debug
     steps:
       - name: Dependabot metadata
         id: metadata
