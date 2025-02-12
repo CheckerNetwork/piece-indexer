@@ -17,6 +17,7 @@ jobs:
           - typescript
           - prettier
           - debug
+          - node
     steps:
       - name: Dependabot metadata
         id: metadata
