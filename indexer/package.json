@@ -13,7 +13,7 @@
   "dependencies": {
     "@filecoin-station/spark-piece-indexer-repository": "^1.0.0",
     "@ipld/dag-cbor": "^9.2.2",
-    "@sentry/node": "^9.0.1",
+    "@sentry/node": "^9.1.0",
     "debug": "^4.4.0",
     "ioredis": "^5.5.0",
     "multiformats": "^13.3.1",
