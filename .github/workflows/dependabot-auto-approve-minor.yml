@@ -18,6 +18,7 @@ jobs:
           - prettier
           - debug
           - node
+          - multiformats
     steps:
       - name: Dependabot metadata
         id: metadata
