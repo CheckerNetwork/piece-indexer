@@ -57,7 +57,7 @@ describe('processNextAdvertisement', () => {
     })
   })
 
-  it('ignores malformed http-path addresses explains the problem in the status', async () => {
+  it('ignores malformed http-path addresses and explains the problem in the status', async () => {
     /** @type {ProviderInfo} */
     const providerInfo = {
       providerAddress: '/dns/meridian.space/http/http-path/invalid%path',
