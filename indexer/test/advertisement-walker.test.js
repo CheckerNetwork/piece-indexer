@@ -19,7 +19,6 @@ import { pipeline } from 'node:stream/promises'
 // TODO(bajtos) We may need to replace this with a mock index provider
 const providerId = '12D3KooWHKeaNCnYByQUMS2n5PAZ1KZ9xKXqsb4bhpxVJ6bBJg5V'
 const providerAddress = 'http://f010479.twinquasar.io:3104'
-
 // The advertisement chain looks this way:
 //
 //  adCid - advertises payloadCid and pieceCid
