@@ -26,8 +26,8 @@
   "homepage": "https://github.com/filecoin-station/piece-indexer#readme",
   "devDependencies": {
     "@types/debug": "^4.1.12",
-    "@types/node": "^22.13.4",
-    "prettier": "^3.5.1",
+    "@types/node": "^22.13.5",
+    "prettier": "^3.5.2",
     "standard": "^17.1.2",
     "typescript": "^5.7.3"
   }
