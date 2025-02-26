@@ -35,7 +35,6 @@ const knownAdvertisement = {
   payloadCid: 'bafkreigrnnl64xuevvkhknbhrcqzbdvvmqnchp7ae2a4ulninsjoc5svoq',
   pieceCid: 'baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja'
 }
-
 describe('processNextAdvertisement', () => {
   it('ignores non-HTTP(s) addresses and explains the problem in the status', async () => {
     /** @type {ProviderInfo} */
@@ -54,6 +53,26 @@ describe('processNextAdvertisement', () => {
       finished: true,
       newState: {
         status: 'Index provider advertises over an unsupported protocol: /ip4/127.0.0.1/tcp/80'
+      }
+    })
+  })
+
+  it('ignores malformed http-path addresses and explains the problem in the status', async () => {
+    /** @type {ProviderInfo} */
+    const providerInfo = {
+      providerAddress: '/dns/meridian.space/http/http-path/invalid%path',
+      lastAdvertisementCID: 'baguqeeraTEST'
+    }
+
+    const result = await processNextAdvertisement({
+      providerId,
+      providerInfo,
+      walkerState: undefined
+    })
+    assert.deepStrictEqual(result, {
+      finished: true,
+      newState: {
+        status: 'Index provider advertises over an unsupported protocol: /dns/meridian.space/http/http-path/invalid%path'
       }
     })
   })
