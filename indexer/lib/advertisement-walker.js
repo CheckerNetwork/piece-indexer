@@ -272,6 +272,7 @@ export async function fetchAdvertisedPayload (providerAddress, advertisementCid,
 
   const meta = parseMetadata(advertisement.Metadata['/'].bytes)
   const pieceCid = meta.deal?.PieceCID.toString()
+
   if (!pieceCid) {
     debug('advertisement %s has no PieceCID in metadata: %j', advertisementCid, meta.deal)
     return {
@@ -369,5 +370,78 @@ export function parseMetadata (meta) {
     return { protocol, deal }
   } else {
     return { protocol }
+  }
+}
+
+/**
+ * Attempts to extract PieceCID and PieceSize from a ContextID
+ *
+ * @param {{'/': {bytes: string}}|undefined} contextID - The ContextID object from an advertisement
+ * @param {function} logDebugMessage - Function to log debug messages
+ * @returns {{pieceCid: string;pieceSize: number}|null} - Object containing pieceCid and pieceSize if successful, null otherwise
+ */
+export function extractPieceCidFromContextID (contextID, logDebugMessage = debug) {
+  // Check if ContextID exists and has the expected structure
+  if (!contextID || !contextID['/'] || !contextID['/'].bytes) {
+    logDebugMessage('Advertisement %s has no properly formatted ContextID', contextID)
+    return null
+  }
+
+  try {
+    // Get the bytes from the ContextID
+    const contextIDBytes = contextID['/'].bytes
+
+    if (!contextIDBytes.toString().startsWith('ghsA')) {
+      logDebugMessage('ContextID for advertisement %s does not match expected format prefix (ghsA)', contextID)
+      return null
+    }
+
+    // Convert to string and check for prefix
+    const bytes = Buffer.from(contextIDBytes, 'base64')
+
+    const decoded = cbor.decode(bytes)
+
+    // Validate the decoded data with specific error messages
+    if (!Array.isArray(decoded)) {
+      logDebugMessage('ContextID validation failed for %s: decoded value is not an array, got %s',
+        contextID, typeof decoded)
+      return null
+    }
+
+    if (decoded.length !== 2) {
+      logDebugMessage('ContextID validation failed for %s: expected array with 2 items, got %d items',
+        contextID, decoded.length)
+      return null
+    }
+    const [pieceSize, pieceCid] = decoded
+    if (typeof pieceSize !== 'number') {
+      logDebugMessage('ContextID validation failed for %s: pieceSize is not a number, got %s',
+        contextID, typeof decoded[0])
+      return null
+    }
+    if (!(typeof pieceCid === 'object')) {
+      logDebugMessage('ContextID validation failed for %s: pieceCID is not an object, got %s',
+        contextID, typeof pieceCid)
+      return null
+    }
+    if (pieceCid === null || pieceCid === undefined) {
+      logDebugMessage('ContextID validation failed for %s: pieceCID is null or undefined',
+        contextID)
+      return null
+    }
+    if (!(pieceCid?.constructor?.name === 'CID')) {
+      logDebugMessage('ContextID validation failed for %s: pieceCID is not a CID, got %s',
+        contextID, pieceCid?.constructor?.name)
+      return null
+    }
+
+    return { pieceCid, pieceSize }
+  } catch (err) {
+    if (err instanceof Error) {
+      logDebugMessage('Failed to decode ContextID for advertisement %s: %s', contextID, err.message)
+    } else {
+      logDebugMessage('Failed to decode ContextID for advertisement %s: unknown error', contextID)
+    }
+    return null
   }
 }
