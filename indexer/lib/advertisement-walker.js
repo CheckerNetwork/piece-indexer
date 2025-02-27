@@ -271,13 +271,16 @@ export async function fetchAdvertisedPayload (providerAddress, advertisementCid,
   }
 
   const meta = parseMetadata(advertisement.Metadata['/'].bytes)
-  const pieceCid = meta.deal?.PieceCID.toString()
+  let pieceCid = meta.deal?.PieceCID.toString()
 
   if (!pieceCid) {
-    debug('advertisement %s has no PieceCID in metadata: %j', advertisementCid, meta.deal)
-    return {
-      error: /** @type {const} */('MISSING_PIECE_CID'),
-      previousAdvertisementCid
+    pieceCid = extractPieceCidFromContextID(advertisement.ContextID)?.pieceCid?.toString()
+    if (!pieceCid) {
+      debug('advertisement %s has no PieceCID in metadata: %j', advertisementCid, meta.deal)
+      return {
+        error: /** @type {const} */('MISSING_PIECE_CID'),
+        previousAdvertisementCid
+      }
     }
   }
 
@@ -390,11 +393,6 @@ export function extractPieceCidFromContextID (contextID, logDebugMessage = debug
   try {
     // Get the bytes from the ContextID
     const contextIDBytes = contextID['/'].bytes
-
-    if (!contextIDBytes.toString().startsWith('ghsA')) {
-      logDebugMessage('ContextID for advertisement %s does not match expected format prefix (ghsA)', contextID)
-      return null
-    }
 
     // Convert to string and check for prefix
     const bytes = Buffer.from(contextIDBytes, 'base64')

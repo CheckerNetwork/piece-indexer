@@ -11,7 +11,7 @@ import {
   walkOneStep
 } from '../lib/advertisement-walker.js'
 import { givenHttpServer } from './helpers/http-server.js'
-import { FRISBII_ADDRESS, FRISBII_AD_CID } from './helpers/test-data.js'
+import { DUCKDNS_ADDERSS, DUCKDNS_AD_CID, FRISBII_ADDRESS, FRISBII_AD_CID } from './helpers/test-data.js'
 import { assertOkResponse } from '../lib/http-assertions.js'
 import * as stream from 'node:stream'
 import { pipeline } from 'node:stream/promises'
@@ -401,6 +401,16 @@ describe('fetchAdvertisedPayload', () => {
       previousAdvertisementCid: undefined
     }))
   })
+
+  // it('returns MISSING_PIECE_CID error for HTTP retrievals', async () => {
+  //   const result = await fetchAdvertisedPayload(DUCKDNS_ADDERSS, DUCKDNS_AD_CID)
+  //   assert.deepStrictEqual(result, /** @type {AdvertisedPayload} */({
+  //     error: 'MISSING_PIECE_CID',
+  //     // Our Frisbii instance announced only one advertisement
+  //     // That's unrelated to HTTP vs Graphsync retrievals
+  //     previousAdvertisementCid: undefined
+  //   }))
+  // })
 })
 
 describe('walkOneStep', () => {
@@ -552,7 +562,6 @@ describe('extractPieceCidFromContextID', () => {
    */
   const createValidContextID = (pieceSize, pieceCid) => {
     const encoded = cbor.encode([pieceSize, pieceCid])
-    // Prefix with 'ghsA'
     return {
       '/': {
         bytes: Buffer.from(encoded).toString('base64')
@@ -595,36 +604,18 @@ describe('extractPieceCidFromContextID', () => {
     ))
   })
 
-  it('should return null when bytes does not start with "ghsA"', () => {
-    // Create a mock CID for testing
-    const mockCid = CID.parse('baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja')
-
-    // Create a contextID with incorrect prefix
-    const encoded = cbor.encode([validPieceSize, mockCid])
-    const incorrectContextID = {
-      '/': {
-        bytes: Buffer.concat([Buffer.from('wrongPrefix'), encoded]).toString('base64')
-      }
-    }
-
-    assert.strictEqual(extractPieceCidFromContextID(incorrectContextID, debug), null)
-    assert.ok(debugMessages.some(msg =>
-      msg.includes('does not match expected format prefix (ghsA)')
-    ))
-  })
-
   it('should return null when decoded data is not an array', () => {
     // Create contextID with non-array CBOR data
     const encoded = cbor.encode('not-an-array')
     const contextID = {
       '/': {
-        bytes: Buffer.concat([Buffer.from('ghsA'), encoded]).toString('base64')
+        bytes: Buffer.from(encoded).toString('base64')
       }
     }
 
     assert.strictEqual(extractPieceCidFromContextID(contextID, debug), null)
     assert.ok(debugMessages.some(msg =>
-      msg.includes('does not match expected format prefix (ghsA)')
+      msg.includes('decoded value is not an array')
     ))
   })
 
@@ -651,7 +642,7 @@ describe('extractPieceCidFromContextID', () => {
     assert.strictEqual(extractPieceCidFromContextID(contextIDTooFew, debug), null)
     assert.strictEqual(extractPieceCidFromContextID(contextIDTooMany, debug), null)
     assert.ok(debugMessages.some(msg =>
-      msg.includes('does not match expected format prefix (ghsA)')
+      msg.includes('expected array with 2 items')
     ))
   })
 
@@ -669,7 +660,7 @@ describe('extractPieceCidFromContextID', () => {
 
     assert.strictEqual(extractPieceCidFromContextID(contextID, debug), null)
     assert.ok(debugMessages.some(msg =>
-      msg.includes('does not match expected format prefix (ghsA)')
+      msg.includes('pieceSize is not a number')
     ))
   })
 
