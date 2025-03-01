@@ -673,13 +673,14 @@ describe('fetchCid', () => {
 
   it('uses DAG-JSON codec (0x0129) to parse response as JSON', async () => {
     // Mock fetch to return JSON
+    // @ts-ignore
     globalThis.fetch = mock.fn(() => {
-      return Promise.resolve(new Response(JSON.stringify({
+      return Promise.resolve({
         ok: true,
         status: 200,
         json: () => Promise.resolve(jsonResponse),
         arrayBuffer: () => { throw new Error('Should not call arrayBuffer for JSON') }
-      })))
+      })
     })
 
     const parsedCid = CID.parse(dagJsonCid)
@@ -695,13 +696,14 @@ describe('fetchCid', () => {
     const cborData = cbor.encode(jsonResponse)
 
     // Mock fetch to return ArrayBuffer
+    // @ts-ignore
     globalThis.fetch = mock.fn(() => {
-      return Promise.resolve(new Response(JSON.stringify({
+      return Promise.resolve({
         ok: true,
         status: 200,
         json: () => { throw new Error('Should not call json for CBOR') },
         arrayBuffer: () => Promise.resolve(cborData.buffer)
-      })))
+      })
     })
 
     const parsedCid = CID.parse(dagCborCid)
@@ -715,13 +717,15 @@ describe('fetchCid', () => {
 
   it('throws an error for unknown codec', async () => {
     // Mock fetch to return JSON
+
+    // @ts-ignore
     globalThis.fetch = mock.fn(() => {
-      return Promise.resolve(new Response(JSON.stringify({
+      return Promise.resolve({
         ok: true,
         status: 200,
         json: () => { throw new Error('Should not call json for CBOR') },
         arrayBuffer: () => { throw new Error('Should not call arrayBuffer for fallback') }
-      })))
+      })
     })
 
     // Use a CID with a codec that is neither DAG-JSON (0x0129) nor DAG-CBOR (0x71)
