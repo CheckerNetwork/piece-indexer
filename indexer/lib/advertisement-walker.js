@@ -311,9 +311,16 @@ export async function fetchAdvertisedPayload (providerAddress, advertisementCid,
     }
   }
 
-  debug('entriesChunk %s %j', entriesCid, entriesChunk.Entries.slice(0, 5))
-  const entryHash = entriesChunk.Entries[0]['/'].bytes
-  const payloadCid = CID.create(1, 0x55 /* raw */, multihash.decode(Buffer.from(entryHash, 'base64'))).toString()
+  let payloadCid
+  try {
+    payloadCid = processEntries(entriesCid, entriesChunk)
+  } catch (err) {
+    debug('Error processing entries: %s', err)
+    return {
+      error: /** @type {const} */('ENTRIES_NOT_RETRIEVABLE'),
+      previousAdvertisementCid
+    }
+  }
 
   return {
     previousAdvertisementCid,
@@ -328,14 +335,29 @@ export async function fetchAdvertisedPayload (providerAddress, advertisementCid,
  * @param {number} [options.fetchTimeout]
  * @returns {Promise<unknown>}
  */
-async function fetchCid (providerBaseUrl, cid, { fetchTimeout } = {}) {
+export async function fetchCid (providerBaseUrl, cid, { fetchTimeout } = {}) {
   const url = new URL(cid, new URL('/ipni/v1/ad/_cid_placeholder_', providerBaseUrl))
   debug('Fetching %s', url)
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(fetchTimeout ?? 30_000) })
     debug('Response from %s → %s %o', url, res.status, res.headers)
     await assertOkResponse(res)
-    return await res.json()
+
+   // Determine the codec based on the CID
+   const parsedCid = CID.parse(cid)
+   const codec = parsedCid.code
+
+   switch (codec) {
+    case 297: // DAG-JSON: https://github.com/multiformats/multicodec/blob/master/table.csv#L113
+      return await res.json()
+      
+    case 113: // DAG-CBOR: https://github.com/multiformats/multicodec/blob/master/table.csv#L46
+      const buffer = await res.arrayBuffer()
+      return cbor.decode(new Uint8Array(buffer))
+      
+    default:
+      throw new Error(`Unknown codec ${codec} for CID ${cid}`)
+  }
   } catch (err) {
     if (err && typeof err === 'object') {
       Object.assign(err, { url })
@@ -370,4 +392,34 @@ export function parseMetadata (meta) {
   } else {
     return { protocol }
   }
+}
+
+/**
+ * Process entries from either DAG-JSON or DAG-CBOR format
+ * @param {string} entriesCid - The CID of the entries
+ * @param {any} entriesChunk - The decoded entries
+ * @returns {string} The payload CID
+ */
+export function processEntries(entriesCid, entriesChunk) {
+  if (!entriesChunk.Entries || !entriesChunk.Entries.length) {
+    throw new Error('No entries found in DAG-CBOR response')
+  }
+  const parsedCid = CID.parse(entriesCid)
+  const codec = parsedCid.code
+  let entryBytes
+  switch (codec){
+    case 297: // DAG-JSON
+      // For DAG-JSON format, the entry is a base64 encoded string
+      const entryHash = entriesChunk.Entries[0]['/'].bytes
+      entryBytes = Buffer.from(entryHash, 'base64')
+      break
+    case 113: // DAG-CBOR
+      // For DAG-CBOR format, the entry is already a Uint8Array with the multihash
+      entryBytes = entriesChunk.Entries[0]
+      break
+    default:
+      throw new Error(`Unsupported codec ${codec}`)
+  }
+  assert(entryBytes, 'Entry bytes must be set')
+  return CID.create(1, 0x55 /* raw */, multihash.decode(entryBytes)).toString()
 }

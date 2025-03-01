@@ -13,7 +13,11 @@ import { FRISBII_ADDRESS, FRISBII_AD_CID } from './helpers/test-data.js'
 import { assertOkResponse } from '../lib/http-assertions.js'
 import * as stream from 'node:stream'
 import { pipeline } from 'node:stream/promises'
-
+import * as cbor from '@ipld/dag-cbor'
+import { CID } from 'multiformats/cid'
+import { processEntries } from '../lib/advertisement-walker.js'
+import * as crypto from 'node:crypto'
+import * as multihash from 'multiformats/hashes/digest'
 /** @import { ProviderInfo, WalkerState } from '../lib/typings.js' */
 
 // TODO(bajtos) We may need to replace this with a mock index provider
@@ -35,6 +39,16 @@ const knownAdvertisement = {
   payloadCid: 'bafkreigrnnl64xuevvkhknbhrcqzbdvvmqnchp7ae2a4ulninsjoc5svoq',
   pieceCid: 'baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja'
 }
+
+// Known Curio advertisement in DAG-CBOR format
+const knownCurioAdvertisement = {
+  adCid: 'bafyreictdikh363qfxsmjp63i6kup6aukjqfpd4r6wbhbiz2ctuji4bofm',
+  previousAdCid: 'bafyreibpxkmu65ezxy7rynxotbghfz3ktiapjisntepd67hghfn4hde3na',
+  entriesCid: 'bafyreictdikh363qfxsmjp63i6kup6aukjqfpd4r6wbhbiz2ctuji4bofm',
+  payloadCid: 'bafkreigrnnl64xuevvkhknbhrcqzbdvvmqnchp7ae2a4ulninsjoc5svoq', 
+  pieceCid: 'baga6ea4seaqlng5bfkppozoltkk5hhyhzansp6nqndsyr3mmwubvvcnswbba'
+}
+
 describe('processNextAdvertisement', () => {
   it('ignores non-HTTP(s) addresses and explains the problem in the status', async () => {
     /** @type {ProviderInfo} */
@@ -517,3 +531,184 @@ describe('data schema for REST API', () => {
     })
   })
 })
+
+describe('processEntries', () => {
+  const dagJsonCid = 'baguqeerayzpbdctxk4iyps45uldgibsvy6zro33vpfbehggivhcxcq5suaia'
+  const dagCborCid = 'bafyreictdikh363qfxsmjp63i6kup6aukjqfpd4r6wbhbiz2ctuji4bofm'
+  const base64EncodedMultihash = 'Ekj/4tKFgn/U3zXiw20IkqsINRvgHdHpmKuRkFVqMswSOw=='
+  
+  // Standard multihash byte array
+  const entryBytes = new Uint8Array([
+    18, 32, 255, 226, 210, 133, 130, 124,
+    212, 223, 53, 226, 203, 109, 8, 146,
+    171, 8, 53, 27, 224, 29, 209, 233,
+    152, 171, 145, 144, 85, 106, 50, 204,
+    18, 55
+  ])
+  
+  const dagJsonChunk = {
+    Entries: [
+      {
+        '/': {
+          bytes: base64EncodedMultihash
+        }
+      }
+    ]
+  }
+  
+  const dagCborChunk = {
+    Entries: [entryBytes]
+  }
+    it('processes DAG-JSON entries correctly', () => {      
+      // Process the entries with the real CID
+      const result = processEntries(dagJsonCid, dagJsonChunk)
+      
+      // Verify the result is a valid CID string
+      assert(result.startsWith('bafy'), 'Result should be a valid CID starting with bafy')
+      assert(CID.parse(result), 'Result should be a parseable CID')
+    })
+    
+    it('processes DAG-CBOR entries correctly', () => {            
+      // Process the entries with the real CID
+      const result = processEntries(dagCborCid, dagCborChunk)
+      
+      // Verify the result is a valid CID string
+      assert(result.startsWith('bafy'), 'Result should be a valid CID starting with bafy')
+      assert(CID.parse(result), 'Result should be a parseable CID')
+    })
+    
+    // Error handling tests
+    it('throws an error when entries array is empty', () => {      
+      assert.throws(
+        () => processEntries(dagCborCid, { Entries: [] }),
+        /No entries found/
+      )
+    })
+    
+    it('throws an error when Entries field is missing', () => {
+      assert.throws(
+        () => processEntries(dagCborCid, {}),
+        /No entries found/
+      )
+    })
+    
+    it('throws an error for unsupported codec', () => {
+      // Use a CID with an unsupported codec
+      // This is a fabricated CID based on a hypothetical unsupported codec
+      const unsupportedCid = 'bafybgqbuttvsgv2iopu6isl75byj4qbssh7lujfnac2e6eao4dopmfwk4'
+      
+      assert.throws(
+        () => processEntries(unsupportedCid, dagJsonChunk),
+        /Unsupported codec/
+      )
+    })
+    
+    // Data integrity test using real multihash operations
+    it('correctly creates a CID from entry data', () => {
+      // Create a SHA-256 hash (0x12) of a known string
+      const testData = 'test data for multihash'
+      const digest = crypto.createHash('sha256').update(testData).digest()
+      
+      // Create a proper multihash from this digest
+      const mh = multihash.create(0x12, digest)
+      
+      // Encode the multihash to bytes
+      const encodedHash = multihash.encode(mh)
+      
+      // Convert to base64 for DAG-JSON format
+      const base64Hash = Buffer.from(encodedHash).toString('base64')
+      
+      // Create an entries chunk with this hash
+      const entriesChunk = {
+        Entries: [
+          {
+            '/': {
+              bytes: base64Hash
+            }
+          }
+        ]
+      }
+      
+      // Process the entries
+      const result = processEntries(dagJsonCid, entriesChunk)
+      
+      // Create the expected CID directly
+      const expectedCid = CID.create(1, 0x55, mh).toString()
+      
+      // They should match
+      assert.strictEqual(result, expectedCid, 'CID should match the one created directly')
+    })
+    
+    // Test with entries from CBOR encoding/decoding
+    it('correctly handles DAG-CBOR entries serialized with @ipld/dag-cbor', () => {
+      // Use a real DAG-CBOR CID
+      const dagCborCid = 'bafyreictdikh363qfxsmjp63i6kup6aukjqfpd4r6wbhbiz2ctuji4bofm'
+      
+      // Create a SHA-256 hash (0x12) of a known string
+      const testData = 'test data for DAG-CBOR'
+      const digest = require('crypto').createHash('sha256').update(testData).digest()
+      
+      // Create a proper multihash from this digest
+      const mh = multihash.create(0x12, digest)
+      
+      // Encode the multihash to bytes
+      const encodedHash = multihash.encode(mh)
+      
+      // Create an entries data structure
+      const entriesData = {
+        Entries: [encodedHash]
+      }
+      
+      // Encode it with the CBOR library
+      const encoded = cbor.encode(entriesData)
+      
+      // Decode it back to simulate network response
+      const decoded = cbor.decode(encoded)
+      
+      // Process the entries
+      const result = processEntries(dagCborCid, decoded)
+      
+      // Create the expected CID directly
+      const expectedCid = CID.create(1, 0x55, mh).toString()
+      
+      // They should match
+      assert.strictEqual(result, expectedCid, 'CID should match the one created directly')
+    })
+    
+    // Error case tests with real data
+    it('handles malformed base64 in DAG-JSON gracefully', () => {
+      // Use a real DAG-JSON CID
+      const dagJsonCid = 'baguqeerayzpbdctxk4iyps45uldgibsvy6zro33vpfbehggivhcxcq5suaia'
+      
+      const malformedChunk = {
+        Entries: [
+          {
+            '/': {
+              bytes: 'This-is-not-valid-base64!'
+            }
+          }
+        ]
+      }
+      
+      // We expect an error when processing this malformed data
+      assert.throws(
+        () => processEntries(dagJsonCid, malformedChunk),
+        /Invalid character/
+      )
+    })
+    
+    it('handles invalid multihash in DAG-CBOR gracefully', () => {
+      // Use a real DAG-CBOR CID
+      const dagCborCid = 'bafyreictdikh363qfxsmjp63i6kup6aukjqfpd4r6wbhbiz2ctuji4bofm'
+      
+      const invalidChunk = {
+        Entries: [new Uint8Array([0, 1, 2, 3])] // Too short to be a valid multihash
+      }
+      
+      // We expect an error when processing this invalid multihash
+      assert.throws(
+        () => processEntries(dagCborCid, invalidChunk),
+        /Unexpected/
+      )
+    })
+  })
