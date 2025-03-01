@@ -351,9 +351,9 @@ export async function fetchCid (providerBaseUrl, cid, { fetchTimeout } = {}) {
       case 297: // DAG-JSON: https://github.com/multiformats/multicodec/blob/master/table.csv#L113
         return await res.json()
 
-      case 113: // DAG-CBOR: https://github.com/multiformats/multicodec/blob/master/table.csv#L46
+      case 113: { // DAG-CBOR: https://github.com/multiformats/multicodec/blob/master/table.csv#L46
         const buffer = await res.arrayBuffer()
-        return cbor.decode(new Uint8Array(buffer))
+        return cbor.decode(new Uint8Array(buffer)) }
 
       default:
         throw new Error(`Unknown codec ${codec} for CID ${cid}`)
@@ -408,7 +408,8 @@ export function processEntries (entriesCid, entriesChunk) {
   const codec = parsedCid.code
   let entryBytes
   switch (codec) {
-    case 297: // DAG-JSON
+    case 297: {
+      // DAG-JSON
       // For DAG-JSON format, the entry is a base64 encoded string
       const entry = entriesChunk.Entries[0]
       // Check that entry is an object with a '/' property
@@ -424,12 +425,13 @@ export function processEntries (entriesCid, entriesChunk) {
 
       const entryHash = entry['/'].bytes
       entryBytes = Buffer.from(String(entryHash), 'base64')
-      break
-    case 113: // DAG-CBOR
+      break }
+    case 113: {
+      // DAG-CBOR
       // For DAG-CBOR format, the entry is already a Uint8Array with the multihash
       entryBytes = entriesChunk.Entries[0]
       assert(entryBytes instanceof Uint8Array, 'DAG-CBOR entry must be a Uint8Array')
-      break
+      break }
     default:
       throw new Error(`Unsupported codec ${codec}`)
   }
