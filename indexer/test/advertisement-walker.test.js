@@ -41,7 +41,6 @@ const knownAdvertisement = {
   payloadCid: 'bafkreigrnnl64xuevvkhknbhrcqzbdvvmqnchp7ae2a4ulninsjoc5svoq',
   pieceCid: 'baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja'
 }
-
 describe('processNextAdvertisement', () => {
   it('ignores non-HTTP(s) addresses and explains the problem in the status', async () => {
     /** @type {ProviderInfo} */
