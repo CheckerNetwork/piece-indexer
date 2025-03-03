@@ -336,7 +336,17 @@ export async function fetchAdvertisedPayload (providerAddress, advertisementCid,
  * @returns {Promise<unknown>}
  */
 export async function fetchCid (providerBaseUrl, cid, { fetchTimeout } = {}) {
-  const url = new URL(cid, new URL('/ipni/v1/ad/_cid_placeholder_', providerBaseUrl))
+  let url = new URL(providerBaseUrl)
+
+  // Check if the URL already has a path
+  if (!(url.pathname && url.pathname !== '/')) {
+    // If no path, add the standard path with a placeholder
+    url = new URL('/ipni/v1/ad/_cid_placeholder_', providerBaseUrl)
+  } else {
+    // If there's already a path, append the additional path
+    url = new URL(`${url.pathname}/ipni/v1/ad/_cid_placeholder_`, url.origin)
+  }
+  url = new URL(cid, url)
   debug('Fetching %s', url)
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(fetchTimeout ?? 30_000) })

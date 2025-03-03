@@ -10,6 +10,7 @@ import {
   , processEntries,
   fetchCid
 } from '../lib/advertisement-walker.js'
+import pRetry from 'p-retry'
 import { givenHttpServer } from './helpers/http-server.js'
 import { FRISBII_ADDRESS, FRISBII_AD_CID } from './helpers/test-data.js'
 import { assertOkResponse } from '../lib/http-assertions.js'
@@ -743,5 +744,36 @@ describe('fetchCid', () => {
       // @ts-ignore
       assert.ok(error.message.includes(errorMessage), `Error message should include: ${errorMessage}`)
     }
+  })
+  it('correctly fetches and processes real DAG-CBOR data from Curio provider', async function () {
+    // Use a real Curio provider and known DAG-CBOR CID
+    const curioProviderUrl = 'https://f03303347-market.duckdns.org/ipni-provider/12D3KooWJ91c6xQshrNe7QAXPFAaeRrHWq2UrgXGPf8UmMZMwyZ5'
+    const dagCborCid = 'baguqeeracgnw2ecmhaa6qkb3irrgjjk5zt5fes7wwwpb4aymoaogzyvvbrma'
+    // Use the real fetchCid function with the original fetch implementation
+    globalThis.fetch = originalFetch
+    /** @type {{ Entries: { [key: string]: string } }} */
+    // @ts-ignore
+    const result = await pRetry(
+      () =>
+        (
+          fetchCid(curioProviderUrl, dagCborCid)
+        )
+    )
+
+    // Verify the result has the expected structure for DAG-CBOR entries
+    assert(result, 'Expected a non-null result')
+    assert(result.Entries, 'Result should have Entries property')
+    const entriesCid = result.Entries['/']
+    /** @type {{Entries: Array<unknown>}} */
+    // @ts-ignore
+    const entriesChunk = await pRetry(
+      () =>
+        (
+          fetchCid(curioProviderUrl, entriesCid)
+        )
+    )
+    const payloadCid = processEntries(entriesCid, entriesChunk)
+    console.log(payloadCid)
+    assert.deepStrictEqual(payloadCid, 'bafkreiefrclz7c6w57yl4u7uiq4kvht4z7pits5jpcj3cajbvowik3rvhm')
   })
 })
