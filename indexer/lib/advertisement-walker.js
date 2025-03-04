@@ -317,7 +317,7 @@ export async function fetchAdvertisedPayload (providerAddress, advertisementCid,
   } catch (err) {
     debug('Error processing entries: %s', err)
     return {
-      error: /** @type {const} */('ENTRIES_NOT_RETRIEVABLE'),
+      error: /** @type {const} */('PAYLOAD_CID_NOT_EXTRACTABLE'),
       previousAdvertisementCid
     }
   }
@@ -333,9 +333,10 @@ export async function fetchAdvertisedPayload (providerAddress, advertisementCid,
  * @param {string} cid
  * @param {object} [options]
  * @param {number} [options.fetchTimeout]
+ * @param {typeof fetch} [options.fetchMethod]
  * @returns {Promise<unknown>}
  */
-export async function fetchCid (providerBaseUrl, cid, { fetchTimeout } = {}) {
+export async function fetchCid (providerBaseUrl, cid, { fetchTimeout, fetchMethod } = {}) {
   let url = new URL(providerBaseUrl)
 
   // Check if the URL already has a path
@@ -349,7 +350,7 @@ export async function fetchCid (providerBaseUrl, cid, { fetchTimeout } = {}) {
   url = new URL(cid, url)
   debug('Fetching %s', url)
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(fetchTimeout ?? 30_000) })
+    const res = await (fetchMethod ?? fetch)(url, { signal: AbortSignal.timeout(fetchTimeout ?? 30_000) })
     debug('Response from %s → %s %o', url, res.status, res.headers)
     await assertOkResponse(res)
 
@@ -357,11 +358,13 @@ export async function fetchCid (providerBaseUrl, cid, { fetchTimeout } = {}) {
     const parsedCid = CID.parse(cid)
     const codec = parsedCid.code
 
+    // List of codecs:
+    // https://github.com/multiformats/multicodec/blob/f18c7ba5f4d3cc74afb51ee79978939abc0e6556/table.csv
     switch (codec) {
-      case 297: // DAG-JSON: https://github.com/multiformats/multicodec/blob/master/table.csv#L113
+      case 297: // DAG-JSON
         return await res.json()
 
-      case 113: { // DAG-CBOR: https://github.com/multiformats/multicodec/blob/master/table.csv#L46
+      case 113: { // DAG-CBOR
         const buffer = await res.arrayBuffer()
         return cbor.decode(new Uint8Array(buffer)) }
 
@@ -434,7 +437,10 @@ export function processEntries (entriesCid, entriesChunk) {
       }
 
       const entryHash = entry['/'].bytes
-      entryBytes = Buffer.from(String(entryHash), 'base64')
+      if (typeof entryHash !== 'string') {
+        throw new Error('DAG-JSON entry\'s ["/"]["bytes"] property must be a string')
+      }
+      entryBytes = Buffer.from(entryHash, 'base64')
       break }
     case 113: {
       // DAG-CBOR

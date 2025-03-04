@@ -1,7 +1,7 @@
 import { RedisRepository } from '@filecoin-station/spark-piece-indexer-repository'
 import { Redis } from 'ioredis'
 import assert from 'node:assert'
-import { after, afterEach, before, beforeEach, describe, it, mock } from 'node:test'
+import { after, before, beforeEach, describe, it, mock } from 'node:test'
 import { setTimeout } from 'node:timers/promises'
 import {
   fetchAdvertisedPayload,
@@ -648,98 +648,81 @@ describe('processEntries', () => {
 })
 
 describe('fetchCid', () => {
-  // Store the original fetch function before each test
-  /**
-   * @type {{ (input: string | URL | globalThis.Request, init?: RequestInit): Promise<Response>; (input: string | URL | globalThis.Request, init?: RequestInit): Promise<Response>; }}
-   */
-  let originalFetch
   // Use a real DAG-JSON CID that will naturally have codec 0x0129 (297)
   // CIDs that start with 'bagu' are DAG-JSON encoded
   const dagJsonCid = 'baguqeerayzpbdctxk4iyps45uldgibsvy6zro33vpfbehggivhcxcq5suaia'
   // Sample JSON response
-  const jsonResponse = { test: 'value' }
+  const testResponse = { test: 'value' }
   // Use a real DAG-CBOR CID that will naturally have codec 0x71 (113)
   // CIDs that start with 'bafy' are DAG-CBOR encoded
   const dagCborCid = 'bafyreictdikh363qfxsmjp63i6kup6aukjqfpd4r6wbhbiz2ctuji4bofm'
 
-  beforeEach(() => {
-    originalFetch = globalThis.fetch
-  })
-
-  afterEach(() => {
-    // Restore the original fetch function after each test
-    globalThis.fetch = originalFetch
-  })
-
   it('uses DAG-JSON codec (0x0129) to parse response as JSON', async () => {
     // Mock fetch to return JSON
     // @ts-ignore
-    globalThis.fetch = mock.fn(() => {
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(jsonResponse),
-        arrayBuffer: () => { throw new Error('Should not call arrayBuffer for JSON') }
-      })
-    })
+    const mockFetch = mock.fn(() => Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(testResponse),
+      arrayBuffer: () => { throw new Error('Should not call arrayBuffer for JSON') }
+    }))
 
     const parsedCid = CID.parse(dagJsonCid)
     assert.strictEqual(parsedCid.code, 297)
 
-    const result = await fetchCid('http://example.com', dagJsonCid)
+    // @ts-ignore
+    const result = await fetchCid('http://example.com', dagJsonCid, { fetchMethod: mockFetch })
 
     // Verify we got the JSON response
-    assert.deepStrictEqual(result, jsonResponse)
+    assert.deepStrictEqual(result, testResponse)
   })
 
   it('uses DAG-CBOR codec (0x71) to parse response as CBOR', async () => {
-    const cborData = cbor.encode(jsonResponse)
+    const cborData = cbor.encode(testResponse)
 
     // Mock fetch to return ArrayBuffer
     // @ts-ignore
-    globalThis.fetch = mock.fn(() => {
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        json: () => { throw new Error('Should not call json for CBOR') },
-        arrayBuffer: () => Promise.resolve(cborData.buffer)
-      })
+    const mockFetch = mock.fn(() => Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => { throw new Error('Should not call json for CBOR') },
+      arrayBuffer: () => Promise.resolve(cborData.buffer)
     })
+    )
 
     const parsedCid = CID.parse(dagCborCid)
     assert.strictEqual(parsedCid.code, 113)
 
-    const result = await fetchCid('http://example.com', dagCborCid)
+    // @ts-ignore
+    const result = await fetchCid('http://example.com', dagCborCid, { fetchMethod: mockFetch })
 
     // Verify we got the decoded CBOR data
-    assert.deepStrictEqual(result, jsonResponse)
+    assert.deepStrictEqual(result, testResponse)
   })
 
   it('throws an error for unknown codec', async () => {
     // Mock fetch to return JSON
 
     // @ts-ignore
-    globalThis.fetch = mock.fn(() => {
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        json: () => { throw new Error('Should not call json for CBOR') },
-        arrayBuffer: () => { throw new Error('Should not call arrayBuffer for fallback') }
-      })
+    const mockFetch = mock.fn(() => Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => { throw new Error('Should not call json for CBOR') },
+      arrayBuffer: () => { throw new Error('Should not call arrayBuffer for fallback') }
     })
+    )
 
     // Use a CID with a codec that is neither DAG-JSON (0x0129) nor DAG-CBOR (0x71)
     // This is a raw codec (0x55) CID
     const unknownCodecCid = 'bafkreigrnnl64xuevvkhknbhrcqzbdvvmqnchp7ae2a4ulninsjoc5svoq'
     const parsedCid = CID.parse(unknownCodecCid)
     assert.strictEqual(parsedCid.code, 85)
-    const errorMessage = 'To parse non base32, base36 or base58btc encoded CID multibase decoder must be provided'
+    const errorMessage = 'Unknown codec 85'
     try {
-      await fetchCid('http://example.com', 'testcid')
+      // @ts-ignore
+      await fetchCid('http://example.com', unknownCodecCid, { fetchMethod: mockFetch })
       assert.fail('fetchCid should have thrown an error')
     } catch (error) {
-      // Check the error message
-
       // @ts-ignore
       assert.ok(error.message.includes(errorMessage), `Error message should include: ${errorMessage}`)
     }
@@ -748,11 +731,8 @@ describe('fetchCid', () => {
     // Use a real Curio provider and known DAG-CBOR CID
     const curioProviderUrl = 'https://f03303347-market.duckdns.org/ipni-provider/12D3KooWJ91c6xQshrNe7QAXPFAaeRrHWq2UrgXGPf8UmMZMwyZ5'
     const dagCborCid = 'baguqeeracgnw2ecmhaa6qkb3irrgjjk5zt5fes7wwwpb4aymoaogzyvvbrma'
-    // Use the real fetchCid function with the original fetch implementation
-    globalThis.fetch = originalFetch
-    /** @type {{ Entries: { [key: string]: string } }} */
-    // @ts-ignore
-    const result = await pRetry(
+    /** @type {unknown} */
+    let result = await pRetry(
       () =>
         (
           fetchCid(curioProviderUrl, dagCborCid)
@@ -761,16 +741,29 @@ describe('fetchCid', () => {
 
     // Verify the result has the expected structure for DAG-CBOR entries
     assert(result, 'Expected a non-null result')
-    assert(result.Entries, 'Result should have Entries property')
-    const entriesCid = result.Entries['/']
-    /** @type {{Entries: Array<unknown>}} */
-    // @ts-ignore
-    const entriesChunk = await pRetry(
+    assert(typeof result === 'object' && result !== null, 'Result should be an object')
+
+    /** @type {Record<string, unknown>} */
+    const resultObj = /** @type {Record<string, unknown>} */ (result)
+    assert('Entries' in resultObj, 'Result should have Entries property')
+    assert(typeof resultObj.Entries === 'object' && resultObj.Entries !== null, 'Entries should be an object')
+
+    /** @type {Record<string, unknown>} */
+    const entries = /** @type {Record<string, unknown>} */ (resultObj.Entries)
+    assert('/' in entries, 'Entries should have a "/" property')
+
+    const entriesCid = entries['/']
+    assert(typeof entriesCid === 'string', 'Entries CID should be a string')
+
+    /** @type {unknown} */
+    result = await pRetry(
       () =>
         (
           fetchCid(curioProviderUrl, entriesCid)
         )
     )
+    /** @type {{ Entries: unknown[]; }} */
+    const entriesChunk = /** @type {{ Entries: unknown[]; }} */ (result)
     const payloadCid = processEntries(entriesCid, entriesChunk)
     console.log(payloadCid)
     assert.deepStrictEqual(payloadCid, 'bafkreiefrclz7c6w57yl4u7uiq4kvht4z7pits5jpcj3cajbvowik3rvhm')
