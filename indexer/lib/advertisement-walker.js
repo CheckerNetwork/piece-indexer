@@ -415,7 +415,7 @@ export function parseMetadata (meta) {
  */
 export function processEntries (entriesCid, entriesChunk) {
   if (!entriesChunk.Entries || !entriesChunk.Entries.length) {
-    throw new Error('No entries found in DAG-CBOR response')
+    throw new Error(`No entries found in the response for ${entriesCid}`)
   }
   const parsedCid = CID.parse(entriesCid)
   const codec = parsedCid.code
@@ -433,7 +433,7 @@ export function processEntries (entriesCid, entriesChunk) {
       // Verify the '/' property is an object with 'bytes' property
       // In DAG-JSON, CIDs are represented as objects with a '/' property that contains 'bytes'
       if (!entry['/'] || typeof entry['/'] !== 'object' || !('bytes' in entry['/'])) {
-        throw new Error('DAG-JSON entry\'s "/" property must be a CID object with a bytes property')
+        throw new Error('DAG-JSON entry\'s "/" property must be an object with a "bytes" property')
       }
 
       const entryHash = entry['/'].bytes
