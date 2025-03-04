@@ -412,7 +412,7 @@ export function parseMetadata (meta) {
  */
 export function processEntries (entriesCid, entriesChunk) {
   if (!entriesChunk.Entries || !entriesChunk.Entries.length) {
-    throw new Error('No entries found in DAG-CBOR response')
+    throw new Error(`No entries found in the response for ${entriesCid}`)
   }
   const parsedCid = CID.parse(entriesCid)
   const codec = parsedCid.code
