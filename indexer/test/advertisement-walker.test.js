@@ -1,7 +1,7 @@
 import { RedisRepository } from '@filecoin-station/spark-piece-indexer-repository'
 import { Redis } from 'ioredis'
 import assert from 'node:assert'
-import { after, before, beforeEach, describe, it, mock } from 'node:test'
+import { after, before, beforeEach, describe, it } from 'node:test'
 import { setTimeout } from 'node:timers/promises'
 import {
   fetchAdvertisedPayload,
@@ -534,7 +534,6 @@ describe('processEntries', () => {
   const testData = 'test data for multihash'
   // Create a proper multihash from this digest
   const mh = multihash.create(0x12, crypto.createHash('sha256').update(testData).digest())
-  // @ts-ignore
   const entryBytes = Buffer.from(mh.bytes).toString('base64')
   const dagJsonChunk = {
     Entries: [
@@ -575,6 +574,7 @@ describe('processEntries', () => {
 
   it('throws an error when Entries field is missing', () => {
     assert.throws(
+      // We need to ignore the type error here because we are testing an error case
       // @ts-ignore
       () => processEntries(dagCborCid, {}),
       /No entries found/
@@ -659,19 +659,23 @@ describe('fetchCid', () => {
 
   it('uses DAG-JSON codec (0x0129) to parse response as JSON', async () => {
     // Mock fetch to return JSON
-    // @ts-ignore
-    const mockFetch = mock.fn(() => Promise.resolve({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(testResponse),
-      arrayBuffer: () => { throw new Error('Should not call arrayBuffer for JSON') }
-    }))
+    /** @type {typeof fetch} */
+    const mockFetch = () => Promise.resolve(
+      new Response(
+        JSON.stringify(testResponse),
+        {
+          status: 200,
+          headers: new Headers({
+            'Content-Type': 'application/json'
+          })
+        }
+      )
+    )
 
     const parsedCid = CID.parse(dagJsonCid)
     assert.strictEqual(parsedCid.code, 297)
 
-    // @ts-ignore
-    const result = await fetchCid('http://example.com', dagJsonCid, { fetchMethod: mockFetch })
+    const result = await fetchCid('http://example.com', dagJsonCid, { fetchFn: mockFetch })
 
     // Verify we got the JSON response
     assert.deepStrictEqual(result, testResponse)
@@ -681,20 +685,18 @@ describe('fetchCid', () => {
     const cborData = cbor.encode(testResponse)
 
     // Mock fetch to return ArrayBuffer
-    // @ts-ignore
-    const mockFetch = mock.fn(() => Promise.resolve({
-      ok: true,
-      status: 200,
-      json: () => { throw new Error('Should not call json for CBOR') },
-      arrayBuffer: () => Promise.resolve(cborData.buffer)
-    })
-    )
+    /** @type {typeof fetch} */
+    const mockFetch = () => {
+      return Promise.resolve(new Response(cborData.buffer, {
+        status: 200,
+        headers: { 'Content-Type': 'application/cbor' }
+      }))
+    }
 
     const parsedCid = CID.parse(dagCborCid)
     assert.strictEqual(parsedCid.code, 113)
 
-    // @ts-ignore
-    const result = await fetchCid('http://example.com', dagCborCid, { fetchMethod: mockFetch })
+    const result = await fetchCid('http://example.com', dagCborCid, { fetchFn: mockFetch })
 
     // Verify we got the decoded CBOR data
     assert.deepStrictEqual(result, testResponse)
@@ -703,13 +705,9 @@ describe('fetchCid', () => {
   it('throws an error for unknown codec', async () => {
     // Mock fetch to return JSON
 
-    // @ts-ignore
-    const mockFetch = mock.fn(() => Promise.resolve({
-      ok: true,
-      status: 200,
-      json: () => { throw new Error('Should not call json for CBOR') },
-      arrayBuffer: () => { throw new Error('Should not call arrayBuffer for fallback') }
-    })
+    /** @type {typeof fetch} */
+    const mockFetch = () => Promise.resolve(
+      new Response()
     )
 
     // Use a CID with a codec that is neither DAG-JSON (0x0129) nor DAG-CBOR (0x71)
@@ -719,11 +717,10 @@ describe('fetchCid', () => {
     assert.strictEqual(parsedCid.code, 85)
     const errorMessage = 'Unknown codec 85'
     try {
-      // @ts-ignore
-      await fetchCid('http://example.com', unknownCodecCid, { fetchMethod: mockFetch })
+      await fetchCid('http://example.com', unknownCodecCid, { fetchFn: mockFetch })
       assert.fail('fetchCid should have thrown an error')
     } catch (error) {
-      // @ts-ignore
+      assert(error instanceof Error, 'Error should be an instance of Error')
       assert.ok(error.message.includes(errorMessage), `Error message should include: ${errorMessage}`)
     }
   })

@@ -333,10 +333,10 @@ export async function fetchAdvertisedPayload (providerAddress, advertisementCid,
  * @param {string} cid
  * @param {object} [options]
  * @param {number} [options.fetchTimeout]
- * @param {typeof fetch} [options.fetchMethod]
+ * @param {typeof fetch} [options.fetchFn]
  * @returns {Promise<unknown>}
  */
-export async function fetchCid (providerBaseUrl, cid, { fetchTimeout, fetchMethod } = {}) {
+export async function fetchCid (providerBaseUrl, cid, { fetchTimeout, fetchFn } = {}) {
   let url = new URL(providerBaseUrl)
 
   // Check if the URL already has a path
@@ -350,7 +350,7 @@ export async function fetchCid (providerBaseUrl, cid, { fetchTimeout, fetchMetho
   url = new URL(cid, url)
   debug('Fetching %s', url)
   try {
-    const res = await (fetchMethod ?? fetch)(url, { signal: AbortSignal.timeout(fetchTimeout ?? 30_000) })
+    const res = await (fetchFn ?? fetch)(url, { signal: AbortSignal.timeout(fetchTimeout ?? 30_000) })
     debug('Response from %s → %s %o', url, res.status, res.headers)
     await assertOkResponse(res)
 
