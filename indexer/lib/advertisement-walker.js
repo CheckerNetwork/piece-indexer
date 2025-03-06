@@ -256,7 +256,7 @@ export async function fetchAdvertisedPayload (providerAddress, advertisementCid,
         }
       }
      }} */(
-      await fetchCid(providerAddress, advertisementCid, { fetchTimeout })
+      await pRetry(() => fetchCid(providerAddress, advertisementCid, { fetchTimeout }))
     )
   const previousAdvertisementCid = advertisement.PreviousID?.['/']
   debug('advertisement %s %j', advertisementCid, advertisement)
