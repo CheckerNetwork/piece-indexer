@@ -270,13 +270,12 @@ export async function fetchAdvertisedPayload (providerAddress, advertisementCid,
     return { previousAdvertisementCid }
   }
 
-  const meta = parseMetadata(advertisement.Metadata['/'].bytes)
-  let pieceCid = meta.deal?.PieceCID.toString()
-
+  let pieceCid = extractPieceCidFromContextID(advertisement.ContextID)?.pieceCid?.toString()
   if (!pieceCid) {
-    pieceCid = extractPieceCidFromContextID(advertisement.ContextID)?.pieceCid?.toString()
+    const meta = parseMetadata(advertisement.Metadata['/'].bytes)
+    pieceCid = meta.deal?.PieceCID.toString()
     if (!pieceCid) {
-      debug('advertisement %s has no PieceCID in metadata: %j', advertisementCid, meta.deal)
+      debug('advertisement %s has no PieceCID in ContextId: %j or metadata: %j', advertisementCid, advertisement.ContextID, meta.deal)
       return {
         error: /** @type {const} */('MISSING_PIECE_CID'),
         previousAdvertisementCid
@@ -315,9 +314,16 @@ export async function fetchAdvertisedPayload (providerAddress, advertisementCid,
     }
   }
 
-  debug('entriesChunk %s %j', entriesCid, entriesChunk.Entries.slice(0, 5))
-  const entryHash = entriesChunk.Entries[0]['/'].bytes
-  const payloadCid = CID.create(1, 0x55 /* raw */, multihash.decode(Buffer.from(entryHash, 'base64'))).toString()
+  let payloadCid
+  try {
+    payloadCid = processEntries(entriesCid, entriesChunk)
+  } catch (err) {
+    debug('Error processing entries: %s', err)
+    return {
+      error: /** @type {const} */('PAYLOAD_CID_NOT_EXTRACTABLE'),
+      previousAdvertisementCid
+    }
+  }
 
   return {
     previousAdvertisementCid,
@@ -330,16 +336,44 @@ export async function fetchAdvertisedPayload (providerAddress, advertisementCid,
  * @param {string} cid
  * @param {object} [options]
  * @param {number} [options.fetchTimeout]
+ * @param {typeof fetch} [options.fetchFn]
  * @returns {Promise<unknown>}
  */
-async function fetchCid (providerBaseUrl, cid, { fetchTimeout } = {}) {
-  const url = new URL(cid, new URL('/ipni/v1/ad/_cid_placeholder_', providerBaseUrl))
+export async function fetchCid (providerBaseUrl, cid, { fetchTimeout, fetchFn } = {}) {
+  let url = new URL(providerBaseUrl)
+
+  // Check if the URL already has a path
+  if (!(url.pathname && url.pathname !== '/')) {
+    // If no path, add the standard path with a placeholder
+    url = new URL('/ipni/v1/ad/_cid_placeholder_', providerBaseUrl)
+  } else {
+    // If there's already a path, append the additional path
+    url = new URL(`${url.pathname}/ipni/v1/ad/_cid_placeholder_`, url.origin)
+  }
+  url = new URL(cid, url)
   debug('Fetching %s', url)
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(fetchTimeout ?? 30_000) })
+    const res = await (fetchFn ?? fetch)(url, { signal: AbortSignal.timeout(fetchTimeout ?? 30_000) })
     debug('Response from %s → %s %o', url, res.status, res.headers)
     await assertOkResponse(res)
-    return await res.json()
+
+    // Determine the codec based on the CID
+    const parsedCid = CID.parse(cid)
+    const codec = parsedCid.code
+
+    // List of codecs:
+    // https://github.com/multiformats/multicodec/blob/f18c7ba5f4d3cc74afb51ee79978939abc0e6556/table.csv
+    switch (codec) {
+      case 297: // DAG-JSON
+        return await res.json()
+
+      case 113: { // DAG-CBOR
+        const buffer = await res.arrayBuffer()
+        return cbor.decode(new Uint8Array(buffer)) }
+
+      default:
+        throw new Error(`Unknown codec ${codec} for CID ${cid}`)
+    }
   } catch (err) {
     if (err && typeof err === 'object') {
       Object.assign(err, { url })
@@ -380,13 +414,14 @@ export function parseMetadata (meta) {
  * Attempts to extract PieceCID and PieceSize from a ContextID
  *
  * @param {{'/': {bytes: string}}|undefined} contextID - The ContextID object from an advertisement
- * @param {function} logDebugMessage - Function to log debug messages
+ * @param {object} [options]
+ * @param {function} [options.logDebugMessage] - Function to log debug messages
  * @returns {{pieceCid: string;pieceSize: number}|null} - Object containing pieceCid and pieceSize if successful, null otherwise
  */
-export function extractPieceCidFromContextID (contextID, logDebugMessage = debug) {
+export function extractPieceCidFromContextID (contextID, { logDebugMessage } = {}) {
   // Check if ContextID exists and has the expected structure
   if (!contextID || !contextID['/'] || !contextID['/'].bytes) {
-    logDebugMessage('Advertisement %s has no properly formatted ContextID', contextID)
+    (logDebugMessage ?? debug)('Advertisement %s has no properly formatted ContextID', contextID)
     return null
   }
 
@@ -401,34 +436,34 @@ export function extractPieceCidFromContextID (contextID, logDebugMessage = debug
 
     // Validate the decoded data with specific error messages
     if (!Array.isArray(decoded)) {
-      logDebugMessage('ContextID validation failed for %s: decoded value is not an array, got %s',
+      (logDebugMessage ?? debug)('ContextID validation failed for %s: decoded value is not an array, got %s',
         contextID, typeof decoded)
       return null
     }
 
     if (decoded.length !== 2) {
-      logDebugMessage('ContextID validation failed for %s: expected array with 2 items, got %d items',
+      (logDebugMessage ?? debug)('ContextID validation failed for %s: expected array with 2 items, got %d items',
         contextID, decoded.length)
       return null
     }
     const [pieceSize, pieceCid] = decoded
     if (typeof pieceSize !== 'number') {
-      logDebugMessage('ContextID validation failed for %s: pieceSize is not a number, got %s',
+      (logDebugMessage ?? debug)('ContextID validation failed for %s: pieceSize is not a number, got %s',
         contextID, typeof decoded[0])
       return null
     }
     if (!(typeof pieceCid === 'object')) {
-      logDebugMessage('ContextID validation failed for %s: pieceCID is not an object, got %s',
+      (logDebugMessage ?? debug)('ContextID validation failed for %s: pieceCID is not an object, got %s',
         contextID, typeof pieceCid)
       return null
     }
     if (pieceCid === null || pieceCid === undefined) {
-      logDebugMessage('ContextID validation failed for %s: pieceCID is null or undefined',
+      (logDebugMessage ?? debug)('ContextID validation failed for %s: pieceCID is null or undefined',
         contextID)
       return null
     }
     if (!(pieceCid?.constructor?.name === 'CID')) {
-      logDebugMessage('ContextID validation failed for %s: pieceCID is not a CID, got %s',
+      (logDebugMessage ?? debug)('ContextID validation failed for %s: pieceCID is not a CID, got %s',
         contextID, pieceCid?.constructor?.name)
       return null
     }
@@ -436,10 +471,57 @@ export function extractPieceCidFromContextID (contextID, logDebugMessage = debug
     return { pieceCid, pieceSize }
   } catch (err) {
     if (err instanceof Error) {
-      logDebugMessage('Failed to decode ContextID for advertisement %s: %s', contextID, err.message)
+      (logDebugMessage ?? debug)('Failed to decode ContextID for advertisement %s: %s', contextID, err.message)
     } else {
-      logDebugMessage('Failed to decode ContextID for advertisement %s: unknown error', contextID)
+      (logDebugMessage ?? debug)('Failed to decode ContextID for advertisement %s: unknown error', contextID)
     }
     return null
   }
+}
+
+/** Process entries from either DAG-JSON or DAG-CBOR format
+ * @param {string} entriesCid - The CID of the entries
+ * @param {{Entries: Array<unknown>}} entriesChunk - The decoded entries
+ * @returns {string} The payload CID
+ */
+export function processEntries (entriesCid, entriesChunk) {
+  if (!entriesChunk.Entries || !entriesChunk.Entries.length) {
+    throw new Error(`No entries found in the response for ${entriesCid}`)
+  }
+  const parsedCid = CID.parse(entriesCid)
+  const codec = parsedCid.code
+  let entryBytes
+  switch (codec) {
+    case 297: {
+      // DAG-JSON
+      // For DAG-JSON format, the entry is a base64 encoded string
+      const entry = entriesChunk.Entries[0]
+      // Check that entry is an object with a '/' property
+      if (!entry || typeof entry !== 'object' || !('/' in entry)) {
+        throw new Error('DAG-JSON entry must have a "/" property')
+      }
+
+      // Verify the '/' property is an object with 'bytes' property
+      // In DAG-JSON, CIDs are represented as objects with a '/' property that contains 'bytes'
+      if (!entry['/'] || typeof entry['/'] !== 'object' || !('bytes' in entry['/'])) {
+        throw new Error('DAG-JSON entry\'s "/" property must be an object with a "bytes" property')
+      }
+
+      const entryHash = entry['/'].bytes
+      if (typeof entryHash !== 'string') {
+        throw new Error('DAG-JSON entry\'s ["/"]["bytes"] property must be a string')
+      }
+      entryBytes = Buffer.from(entryHash, 'base64')
+      break }
+    case 113: {
+      // DAG-CBOR
+      // For DAG-CBOR format, the entry is already a Uint8Array with the multihash
+      entryBytes = entriesChunk.Entries[0]
+      assert(entryBytes instanceof Uint8Array, 'DAG-CBOR entry must be a Uint8Array')
+      break }
+    default:
+      throw new Error(`Unsupported codec ${codec}`)
+  }
+  assert(entryBytes, 'Entry bytes must be set')
+  return CID.create(1, 0x55 /* raw */, multihash.decode(entryBytes)).toString()
 }
