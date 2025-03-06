@@ -443,16 +443,6 @@ describe('fetchAdvertisedPayload', () => {
       previousAdvertisementCid: undefined
     }))
   })
-
-  // it('returns MISSING_PIECE_CID error for HTTP retrievals', async () => {
-  //   const result = await fetchAdvertisedPayload(DUCKDNS_ADDERSS, DUCKDNS_AD_CID)
-  //   assert.deepStrictEqual(result, /** @type {AdvertisedPayload} */({
-  //     error: 'MISSING_PIECE_CID',
-  //     // Our Frisbii instance announced only one advertisement
-  //     // That's unrelated to HTTP vs Graphsync retrievals
-  //     previousAdvertisementCid: undefined
-  //   }))
-  // })
 })
 
 describe('walkOneStep', () => {
