@@ -413,7 +413,7 @@ export function parseMetadata (meta) {
 /**
  * Attempts to extract PieceCID and PieceSize from a ContextID
  *
- * @param {{'/': {bytes: string}}|undefined} contextID - The ContextID object from an advertisement
+ * @param {{'/': {bytes: string}}|undefined | null} contextID - The ContextID object from an advertisement
  * @param {object} [options]
  * @param {function} [options.logDebugMessage] - Function to log debug messages
  * @returns {{pieceCid: string;pieceSize: number}|null} - Object containing pieceCid and pieceSize if successful, null otherwise
@@ -429,9 +429,7 @@ export function extractPieceCidFromContextID (contextID, { logDebugMessage } = {
     // Get the bytes from the ContextID
     const contextIDBytes = contextID['/'].bytes
 
-    // Convert to string and check for prefix
     const bytes = Buffer.from(contextIDBytes, 'base64')
-
     const decoded = cbor.decode(bytes)
 
     // Validate the decoded data with specific error messages

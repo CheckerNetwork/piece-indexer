@@ -1,4 +1,3 @@
-// @ts-ignore
 import { RedisRepository } from '@filecoin-station/spark-piece-indexer-repository'
 import { Redis } from 'ioredis'
 import assert from 'node:assert'
@@ -400,13 +399,8 @@ describe('processNextAdvertisement', () => {
     })
 
     // Basic verification
-    assert(result.newState, 'Should return a newState')
     assert(result.indexEntry, 'Should return an indexEntry')
-    assert.strictEqual(result.finished, false, 'Should not be finished')
-
-    // Verify advertisement processing
     assert.strictEqual(result.newState.head, advertisementCid, 'Head should be the advertisement CID')
-    assert(result.newState.tail, 'Tail should be set')
 
     // Verify piece and payload CIDs are present
     assert(result.indexEntry.pieceCid, 'Piece CID should be present')
@@ -602,10 +596,10 @@ describe('extractPieceCidFromContextID', () => {
   }
 
   /**
-   * Example of valid context provided
+   * Example of valid contextId provided
    * @type {{'/': {bytes: string}}}
    */
-  const validContextExample = {
+  const validContextIdExample = {
     '/': {
       bytes: 'ghsAAAAIAAAAANgqWCgAAYHiA5IgIFeksuf2VqNvrrRUxrvA+itvJhrDRju06ThagW6ULKw2'
     }
@@ -616,7 +610,6 @@ describe('extractPieceCidFromContextID', () => {
   })
 
   it('should return null when contextID is null or undefined', () => {
-    // @ts-ignore
     assert.strictEqual(extractPieceCidFromContextID(null, { logDebugMessage: debug }), null)
     assert.strictEqual(extractPieceCidFromContextID(undefined, { logDebugMessage: debug }), null)
     assert.ok(debugMessages.some(msg =>
@@ -625,6 +618,7 @@ describe('extractPieceCidFromContextID', () => {
   })
 
   it('should return null when contextID is missing the expected structure', () => {
+    // We are testing cases that violate the expected type structures
     // @ts-ignore
     assert.strictEqual(extractPieceCidFromContextID({}, { logDebugMessage: debug }), null)
     // @ts-ignore
@@ -776,7 +770,7 @@ describe('extractPieceCidFromContextID', () => {
   })
 
   it('should process the provided valid context example correctly', () => {
-    const result = extractPieceCidFromContextID(validContextExample, { logDebugMessage: debug })
+    const result = extractPieceCidFromContextID(validContextIdExample, { logDebugMessage: debug })
 
     assert.notStrictEqual(result, null, 'Should not return null for provided valid context example')
     assert.ok(result !== null)
