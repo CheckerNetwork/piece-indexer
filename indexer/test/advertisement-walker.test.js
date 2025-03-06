@@ -7,13 +7,19 @@ import {
   fetchAdvertisedPayload,
   processNextAdvertisement,
   walkOneStep
+  , processEntries,
+  fetchCid
 } from '../lib/advertisement-walker.js'
+import pRetry from 'p-retry'
 import { givenHttpServer } from './helpers/http-server.js'
 import { FRISBII_ADDRESS, FRISBII_AD_CID } from './helpers/test-data.js'
 import { assertOkResponse } from '../lib/http-assertions.js'
 import * as stream from 'node:stream'
 import { pipeline } from 'node:stream/promises'
-
+import * as cbor from '@ipld/dag-cbor'
+import { CID } from 'multiformats/cid'
+import * as crypto from 'node:crypto'
+import * as multihash from 'multiformats/hashes/digest'
 /** @import { ProviderInfo, WalkerState } from '../lib/typings.js' */
 
 // TODO(bajtos) We may need to replace this with a mock index provider
@@ -515,5 +521,248 @@ describe('data schema for REST API', () => {
       entriesNotRetrievable: 0,
       piecesIndexed: 1
     })
+  })
+})
+
+describe('processEntries', () => {
+  // Use a real DAG-JSON CID that will naturally have codec 0x0129 (297)
+  // CIDs that start with 'bagu' are DAG-JSON encoded
+  const dagJsonCid = 'baguqeeraa5mjufqdwuwrrrqboctnn3vhdlq63rj3hce2igpzbmae7sazkfea'
+  // Use a real DAG-CBOR CID that will naturally have codec 0x71 (113)
+  // CIDs that start with 'bafy' are DAG-CBOR encoded
+  const dagCborCid = 'bafyreibpxkmu65ezxy7rynxotbghfz3ktiapjisntepd67hghfn4hde3na'
+  const testData = 'test data for multihash'
+  // Create a proper multihash from this digest
+  const mh = multihash.create(0x12, crypto.createHash('sha256').update(testData).digest())
+  const entryBytes = Buffer.from(mh.bytes).toString('base64')
+  const dagJsonChunk = {
+    Entries: [
+      {
+        '/': {
+          bytes: entryBytes
+        }
+      }
+    ]
+  }
+
+  const dagCborChunk = {
+    Entries: [mh.bytes]
+  }
+  it('processes DAG-JSON entries correctly', () => {
+    // Process the entries with the real CID
+    const result = processEntries(dagJsonCid, dagJsonChunk)
+
+    // Verify the result is a valid CID string
+    assert(CID.parse(result), 'Result should be a parseable CID')
+  })
+
+  it('processes DAG-CBOR entries correctly', () => {
+    // Process the entries with the real CID
+    const result = processEntries(dagCborCid, dagCborChunk)
+
+    // Verify the result is a valid CID string
+    assert(CID.parse(result), 'Result should be a parseable CID')
+  })
+
+  // Error handling tests
+  it('throws an error when entries array is empty', () => {
+    assert.throws(
+      () => processEntries(dagCborCid, { Entries: [] }),
+      /No entries found/
+    )
+  })
+
+  it('throws an error when Entries field is missing', () => {
+    assert.throws(
+      // We need to ignore the type error here because we are testing an error case
+      // @ts-ignore
+      () => processEntries(dagCborCid, {}),
+      /No entries found/
+    )
+  })
+
+  it('throws an error for unsupported codec', () => {
+    // Use a CID with an unsupported codec
+    const unsupportedCid = 'bafkreigrnnl64xuevvkhknbhrcqzbdvvmqnchp7ae2a4ulninsjoc5svoq'
+
+    assert.throws(
+      () => processEntries(unsupportedCid, dagJsonChunk),
+      /Unsupported codec/
+    )
+  })
+
+  // Data integrity test using real multihash operations
+  it('correctly creates a CID from entry data', () => {
+    // Process the entries
+    const result = processEntries(dagJsonCid, dagJsonChunk)
+
+    // Create the expected CID directly
+    const expectedCid = CID.create(1, 0x55, mh).toString()
+
+    // They should match
+    assert.strictEqual(result, expectedCid, 'CID should match the one created directly')
+  })
+
+  // Test with entries from CBOR encoding/decoding
+  it('correctly handles DAG-CBOR entries serialized with @ipld/dag-cbor', () => {
+    // Process the entries
+    const result = processEntries(dagCborCid, dagCborChunk)
+
+    // Create the expected CID directly
+    const expectedCid = CID.create(1, 0x55, mh).toString()
+
+    // They should match
+    assert.strictEqual(result, expectedCid, 'CID should match the one created directly')
+  })
+
+  // Error case tests with real data
+  it('handles malformed base64 in DAG-JSON gracefully', () => {
+    const malformedChunk = {
+      Entries: [
+        {
+          '/': {
+            bytes: 'This-is-not-valid-base64!'
+          }
+        }
+      ]
+    }
+
+    // We expect an error when processing this malformed data
+    assert.throws(
+      () => processEntries(dagJsonCid, malformedChunk),
+      /Incorrect length/
+    )
+  })
+
+  it('handles invalid multihash in DAG-CBOR gracefully', () => {
+    const invalidChunk = {
+      Entries: [new Uint8Array([0, 1, 2, 3])] // Too short to be a valid multihash
+    }
+
+    // We expect an error when processing this invalid multihash
+    assert.throws(
+      () => processEntries(dagCborCid, invalidChunk),
+      /Incorrect length/
+    )
+  })
+})
+
+describe('fetchCid', () => {
+  // Use a real DAG-JSON CID that will naturally have codec 0x0129 (297)
+  // CIDs that start with 'bagu' are DAG-JSON encoded
+  const dagJsonCid = 'baguqeerayzpbdctxk4iyps45uldgibsvy6zro33vpfbehggivhcxcq5suaia'
+  // Sample JSON response
+  const testResponse = { test: 'value' }
+  // Use a real DAG-CBOR CID that will naturally have codec 0x71 (113)
+  // CIDs that start with 'bafy' are DAG-CBOR encoded
+  const dagCborCid = 'bafyreictdikh363qfxsmjp63i6kup6aukjqfpd4r6wbhbiz2ctuji4bofm'
+
+  it('uses DAG-JSON codec (0x0129) to parse response as JSON', async () => {
+    // Mock fetch to return JSON
+    /** @type {typeof fetch} */
+    const mockFetch = () => Promise.resolve(
+      new Response(
+        JSON.stringify(testResponse),
+        {
+          status: 200,
+          headers: new Headers({
+            'Content-Type': 'application/json'
+          })
+        }
+      )
+    )
+
+    const parsedCid = CID.parse(dagJsonCid)
+    assert.strictEqual(parsedCid.code, 297)
+
+    const result = await fetchCid('http://example.com', dagJsonCid, { fetchFn: mockFetch })
+
+    // Verify we got the JSON response
+    assert.deepStrictEqual(result, testResponse)
+  })
+
+  it('uses DAG-CBOR codec (0x71) to parse response as CBOR', async () => {
+    const cborData = cbor.encode(testResponse)
+
+    // Mock fetch to return ArrayBuffer
+    /** @type {typeof fetch} */
+    const mockFetch = () => {
+      return Promise.resolve(new Response(cborData.buffer, {
+        status: 200,
+        headers: { 'Content-Type': 'application/cbor' }
+      }))
+    }
+
+    const parsedCid = CID.parse(dagCborCid)
+    assert.strictEqual(parsedCid.code, 113)
+
+    const result = await fetchCid('http://example.com', dagCborCid, { fetchFn: mockFetch })
+
+    // Verify we got the decoded CBOR data
+    assert.deepStrictEqual(result, testResponse)
+  })
+
+  it('throws an error for unknown codec', async () => {
+    // Mock fetch to return JSON
+
+    /** @type {typeof fetch} */
+    const mockFetch = () => Promise.resolve(
+      new Response()
+    )
+
+    // Use a CID with a codec that is neither DAG-JSON (0x0129) nor DAG-CBOR (0x71)
+    // This is a raw codec (0x55) CID
+    const unknownCodecCid = 'bafkreigrnnl64xuevvkhknbhrcqzbdvvmqnchp7ae2a4ulninsjoc5svoq'
+    const parsedCid = CID.parse(unknownCodecCid)
+    assert.strictEqual(parsedCid.code, 85)
+    const errorMessage = 'Unknown codec 85'
+    try {
+      await fetchCid('http://example.com', unknownCodecCid, { fetchFn: mockFetch })
+      assert.fail('fetchCid should have thrown an error')
+    } catch (error) {
+      assert(error instanceof Error, 'Error should be an instance of Error')
+      assert.ok(error.message.includes(errorMessage), `Error message should include: ${errorMessage}`)
+    }
+  })
+  it('correctly fetches and processes real DAG-CBOR data from Curio provider', async function () {
+    // Use a real Curio provider and known DAG-CBOR CID
+    const curioProviderUrl = 'https://f03303347-market.duckdns.org/ipni-provider/12D3KooWJ91c6xQshrNe7QAXPFAaeRrHWq2UrgXGPf8UmMZMwyZ5'
+    const dagCborCid = 'baguqeeracgnw2ecmhaa6qkb3irrgjjk5zt5fes7wwwpb4aymoaogzyvvbrma'
+    /** @type {unknown} */
+    let result = await pRetry(
+      () =>
+        (
+          fetchCid(curioProviderUrl, dagCborCid)
+        )
+    )
+
+    // Verify the result has the expected structure for DAG-CBOR entries
+    assert(result, 'Expected a non-null result')
+    assert(typeof result === 'object' && result !== null, 'Result should be an object')
+
+    /** @type {Record<string, unknown>} */
+    const resultObj = /** @type {Record<string, unknown>} */ (result)
+    assert('Entries' in resultObj, 'Result should have Entries property')
+    assert(typeof resultObj.Entries === 'object' && resultObj.Entries !== null, 'Entries should be an object')
+
+    /** @type {Record<string, unknown>} */
+    const entries = /** @type {Record<string, unknown>} */ (resultObj.Entries)
+    assert('/' in entries, 'Entries should have a "/" property')
+
+    const entriesCid = entries['/']
+    assert(typeof entriesCid === 'string', 'Entries CID should be a string')
+
+    /** @type {unknown} */
+    result = await pRetry(
+      () =>
+        (
+          fetchCid(curioProviderUrl, entriesCid)
+        )
+    )
+    /** @type {{ Entries: unknown[]; }} */
+    const entriesChunk = /** @type {{ Entries: unknown[]; }} */ (result)
+    const payloadCid = processEntries(entriesCid, entriesChunk)
+    console.log(payloadCid)
+    assert.deepStrictEqual(payloadCid, 'bafkreiefrclz7c6w57yl4u7uiq4kvht4z7pits5jpcj3cajbvowik3rvhm')
   })
 })

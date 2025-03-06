@@ -311,9 +311,16 @@ export async function fetchAdvertisedPayload (providerAddress, advertisementCid,
     }
   }
 
-  debug('entriesChunk %s %j', entriesCid, entriesChunk.Entries.slice(0, 5))
-  const entryHash = entriesChunk.Entries[0]['/'].bytes
-  const payloadCid = CID.create(1, 0x55 /* raw */, multihash.decode(Buffer.from(entryHash, 'base64'))).toString()
+  let payloadCid
+  try {
+    payloadCid = processEntries(entriesCid, entriesChunk)
+  } catch (err) {
+    debug('Error processing entries: %s', err)
+    return {
+      error: /** @type {const} */('PAYLOAD_CID_NOT_EXTRACTABLE'),
+      previousAdvertisementCid
+    }
+  }
 
   return {
     previousAdvertisementCid,
@@ -326,16 +333,44 @@ export async function fetchAdvertisedPayload (providerAddress, advertisementCid,
  * @param {string} cid
  * @param {object} [options]
  * @param {number} [options.fetchTimeout]
+ * @param {typeof fetch} [options.fetchFn]
  * @returns {Promise<unknown>}
  */
-async function fetchCid (providerBaseUrl, cid, { fetchTimeout } = {}) {
-  const url = new URL(cid, new URL('/ipni/v1/ad/_cid_placeholder_', providerBaseUrl))
+export async function fetchCid (providerBaseUrl, cid, { fetchTimeout, fetchFn } = {}) {
+  let url = new URL(providerBaseUrl)
+
+  // Check if the URL already has a path
+  if (!(url.pathname && url.pathname !== '/')) {
+    // If no path, add the standard path with a placeholder
+    url = new URL('/ipni/v1/ad/_cid_placeholder_', providerBaseUrl)
+  } else {
+    // If there's already a path, append the additional path
+    url = new URL(`${url.pathname}/ipni/v1/ad/_cid_placeholder_`, url.origin)
+  }
+  url = new URL(cid, url)
   debug('Fetching %s', url)
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(fetchTimeout ?? 30_000) })
+    const res = await (fetchFn ?? fetch)(url, { signal: AbortSignal.timeout(fetchTimeout ?? 30_000) })
     debug('Response from %s → %s %o', url, res.status, res.headers)
     await assertOkResponse(res)
-    return await res.json()
+
+    // Determine the codec based on the CID
+    const parsedCid = CID.parse(cid)
+    const codec = parsedCid.code
+
+    // List of codecs:
+    // https://github.com/multiformats/multicodec/blob/f18c7ba5f4d3cc74afb51ee79978939abc0e6556/table.csv
+    switch (codec) {
+      case 297: // DAG-JSON
+        return await res.json()
+
+      case 113: { // DAG-CBOR
+        const buffer = await res.arrayBuffer()
+        return cbor.decode(new Uint8Array(buffer)) }
+
+      default:
+        throw new Error(`Unknown codec ${codec} for CID ${cid}`)
+    }
   } catch (err) {
     if (err && typeof err === 'object') {
       Object.assign(err, { url })
@@ -370,4 +405,52 @@ export function parseMetadata (meta) {
   } else {
     return { protocol }
   }
+}
+
+/**
+ * Process entries from either DAG-JSON or DAG-CBOR format
+ * @param {string} entriesCid - The CID of the entries
+ * @param {{Entries: Array<unknown>}} entriesChunk - The decoded entries
+ * @returns {string} The payload CID
+ */
+export function processEntries (entriesCid, entriesChunk) {
+  if (!entriesChunk.Entries || !entriesChunk.Entries.length) {
+    throw new Error(`No entries found in the response for ${entriesCid}`)
+  }
+  const parsedCid = CID.parse(entriesCid)
+  const codec = parsedCid.code
+  let entryBytes
+  switch (codec) {
+    case 297: {
+      // DAG-JSON
+      // For DAG-JSON format, the entry is a base64 encoded string
+      const entry = entriesChunk.Entries[0]
+      // Check that entry is an object with a '/' property
+      if (!entry || typeof entry !== 'object' || !('/' in entry)) {
+        throw new Error('DAG-JSON entry must have a "/" property')
+      }
+
+      // Verify the '/' property is an object with 'bytes' property
+      // In DAG-JSON, CIDs are represented as objects with a '/' property that contains 'bytes'
+      if (!entry['/'] || typeof entry['/'] !== 'object' || !('bytes' in entry['/'])) {
+        throw new Error('DAG-JSON entry\'s "/" property must be an object with a "bytes" property')
+      }
+
+      const entryHash = entry['/'].bytes
+      if (typeof entryHash !== 'string') {
+        throw new Error('DAG-JSON entry\'s ["/"]["bytes"] property must be a string')
+      }
+      entryBytes = Buffer.from(entryHash, 'base64')
+      break }
+    case 113: {
+      // DAG-CBOR
+      // For DAG-CBOR format, the entry is already a Uint8Array with the multihash
+      entryBytes = entriesChunk.Entries[0]
+      assert(entryBytes instanceof Uint8Array, 'DAG-CBOR entry must be a Uint8Array')
+      break }
+    default:
+      throw new Error(`Unsupported codec ${codec}`)
+  }
+  assert(entryBytes, 'Entry bytes must be set')
+  return CID.create(1, 0x55 /* raw */, multihash.decode(entryBytes)).toString()
 }
