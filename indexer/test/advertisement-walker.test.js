@@ -3,7 +3,9 @@ import { Redis } from 'ioredis'
 import assert from 'node:assert'
 import { after, before, beforeEach, describe, it } from 'node:test'
 import { setTimeout } from 'node:timers/promises'
+import * as util from 'node:util'
 import {
+  extractPieceInfoFromContextID,
   fetchAdvertisedPayload,
   processNextAdvertisement,
   walkOneStep
@@ -20,6 +22,7 @@ import * as cbor from '@ipld/dag-cbor'
 import { CID } from 'multiformats/cid'
 import * as crypto from 'node:crypto'
 import * as multihash from 'multiformats/hashes/digest'
+import { multiaddrToHttpUrl } from '../lib/vendored/multiaddr.js'
 /** @import { ProviderInfo, WalkerState } from '../lib/typings.js' */
 
 // TODO(bajtos) We may need to replace this with a mock index provider
@@ -378,6 +381,38 @@ describe('processNextAdvertisement', () => {
       }
     })
   })
+  it('correctly processes Curio advertisement with DAG-CBOR entries', async function () {
+    // Real Curio provider details
+    const curioProviderId = '12D3KooWJ91c6xQshrNe7QAXPFAaeRrHWq2UrgXGPf8UmMZMwyZ5'
+    const curioProviderAddress = multiaddrToHttpUrl('/dns/f03303347-market.duckdns.org/https/http-path/%2Fipni-provider%2F12D3KooWJ91c6xQshrNe7QAXPFAaeRrHWq2UrgXGPf8UmMZMwyZ5')
+    const advertisementCid = 'baguqeerakqnjugtecgj5hhfmnh46pthk5k3vy6vf4bw3vpmwmudknlatun5a'
+
+    const providerInfo = {
+      providerAddress: curioProviderAddress,
+      lastAdvertisementCID: advertisementCid
+    }
+
+    // Call processNextAdvertisement against the real provider
+    const result = await processNextAdvertisement({
+      providerId: curioProviderId,
+      providerInfo,
+      walkerState: undefined
+    })
+
+    // Basic verification
+    assert(result.indexEntry, 'Should return an indexEntry')
+    assert.strictEqual(result.newState.head, advertisementCid, 'Head should be the advertisement CID')
+
+    // Verify piece and payload CIDs are present
+    assert(result.indexEntry.pieceCid, 'Piece CID should be present')
+    assert.strictEqual(result.indexEntry.pieceCid, 'baga6ea4seaqfpjfs473fni3pv22fjrv3yd5cw3zgdlbumo5u5e4fvalosqwkynq', 'Piece CID should have correct prefix')
+    const parsedPieceCid = CID.parse(result.indexEntry.pieceCid)
+    assert.strictEqual(parsedPieceCid.code, 61697)
+
+    assert.strictEqual(result.indexEntry.payloadCid, 'bafkreih74ljilat42tptlywlnuejfkyigun6ahor5gmkxemqkvvdftasg4', 'Payload CID should be present')
+    const parsedPayloadCid = CID.parse(result.indexEntry.payloadCid)
+    assert.strictEqual(parsedPayloadCid.code, 85)
+  })
 })
 
 /** @typedef {Awaited<ReturnType<fetchAdvertisedPayload>>} AdvertisedPayload */
@@ -522,6 +557,239 @@ describe('data schema for REST API', () => {
       piecesIndexed: 1
     })
   })
+})
+
+describe('extractPieceCidFromContextID', () => {
+  const validPieceSize = 34359738368
+  /**
+   * @type {Array<string>}
+   */
+  let debugMessages = []
+  /**
+   * @type {(format: string, ...args: any[]) => void}
+   */
+  const logDebugMessage = (format, ...args) => {
+    debugMessages.push(util.format(format, ...args))
+  }
+
+  /**
+   * Clear debug messages before each test
+   */
+  const clearDebugMessages = () => {
+    debugMessages = []
+  }
+
+  /**
+   * Helper to create valid test data
+   * @param {number} pieceSize - Size of the piece
+   * @param {import('multiformats/cid').CID} pieceCid - CID of the piece
+   * @returns {{'/': {bytes: string}}} - Valid context ID object
+   */
+  const createValidContextID = (pieceSize, pieceCid) => {
+    const encoded = cbor.encode([pieceSize, pieceCid])
+    return {
+      '/': {
+        bytes: Buffer.from(encoded).toString('base64')
+      }
+    }
+  }
+
+  /**
+   * Example of valid contextId provided
+   * @type {{'/': {bytes: string}}}
+   */
+  const validContextIdExample = {
+    '/': {
+      bytes: 'ghsAAAAIAAAAANgqWCgAAYHiA5IgIFeksuf2VqNvrrRUxrvA+itvJhrDRju06ThagW6ULKw2'
+    }
+  }
+
+  beforeEach(() => {
+    clearDebugMessages()
+  })
+
+  it('should return null when contextID is null or undefined', () => {
+    assert.strictEqual(extractPieceInfoFromContextID(null, { logDebugMessage }), null)
+    assert.strictEqual(extractPieceInfoFromContextID(undefined, { logDebugMessage }), null)
+    assert.ok(debugMessages.some(msg =>
+      msg.includes('has no properly formatted ContextID')
+    ))
+  })
+
+  it('should return null when contextID is missing the expected structure', () => {
+    // We are testing cases that violate the expected type structures
+    assert.strictEqual(extractPieceInfoFromContextID(/** @type {any} */ ({}), { logDebugMessage }), null)
+    assert.strictEqual(extractPieceInfoFromContextID(/** @type {any} */({ '/': {} }), { logDebugMessage }), null)
+    assert.strictEqual(extractPieceInfoFromContextID(/** @type {any} */({ wrong: 'structure' }), { logDebugMessage }), null)
+    assert.ok(debugMessages.every(msg =>
+      msg.includes('has no properly formatted ContextID')
+    ))
+  })
+
+  it('should return null when decoded data is not an array', () => {
+    // Create contextID with non-array CBOR data
+    const encoded = cbor.encode('not-an-array')
+    const contextID = {
+      '/': {
+        bytes: Buffer.from(encoded).toString('base64')
+      }
+    }
+
+    assert.strictEqual(extractPieceInfoFromContextID(contextID, { logDebugMessage }), null)
+    assert.ok(debugMessages.some(msg =>
+      msg.includes('decoded value is not an array')
+    ))
+  })
+
+  it('should return null when decoded array does not have exactly 2 items', () => {
+    // Create a mock CID for testing
+    const mockCid = CID.parse('baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja')
+
+    // Create contextID with array of wrong length
+    const encodedTooFew = cbor.encode([validPieceSize])
+    const encodedTooMany = cbor.encode([validPieceSize, mockCid, 'extra-item'])
+
+    const contextIDTooFew = {
+      '/': {
+        bytes: Buffer.from(encodedTooFew).toString('base64')
+      }
+    }
+
+    const contextIDTooMany = {
+      '/': {
+        bytes: Buffer.from(encodedTooMany).toString('base64')
+      }
+    }
+
+    assert.strictEqual(extractPieceInfoFromContextID(contextIDTooFew, { logDebugMessage }), null)
+    assert.strictEqual(extractPieceInfoFromContextID(contextIDTooMany, { logDebugMessage }), null)
+    assert.ok(debugMessages.some(msg =>
+      msg.includes('expected array with 2 items')
+    ))
+  })
+
+  it('should return null when pieceSize is not a number', () => {
+    // Create a mock CID for testing
+    const mockCid = CID.parse('baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja')
+
+    // Create contextID with non-numeric pieceSize
+    const encoded = cbor.encode(['not-a-number', mockCid])
+    const contextID = {
+      '/': {
+        bytes: Buffer.from(encoded).toString('base64')
+      }
+    }
+
+    assert.strictEqual(extractPieceInfoFromContextID(contextID, { logDebugMessage }), null)
+    assert.ok(debugMessages.some(msg =>
+      msg.includes('pieceSize is not a number')
+    ))
+  })
+
+  it('should return null when pieceCid is not an object', () => {
+    // Create contextID with non-object pieceCid
+    const encoded = cbor.encode([validPieceSize, 'not-an-object'])
+    const contextID = {
+      '/': {
+        bytes: Buffer.from(encoded).toString('base64')
+      }
+    }
+
+    assert.strictEqual(extractPieceInfoFromContextID(contextID, { logDebugMessage }), null)
+    assert.ok(debugMessages.some(msg =>
+      msg.includes('pieceCID is not an object')
+    ))
+  })
+
+  it('should return null when pieceCid is null', () => {
+    // Create contextIDs with null/undefined pieceCid
+    const encodedNull = cbor.encode([validPieceSize, null])
+
+    /** @type {{'/': {bytes: string}}} */
+    const contextIDNull = {
+      '/': {
+        bytes: Buffer.from(encodedNull).toString('base64')
+      }
+    }
+
+    assert.strictEqual(extractPieceInfoFromContextID(contextIDNull, { logDebugMessage }), null)
+    assert.ok(debugMessages.some(msg =>
+      msg.includes('pieceCID is null or undefined')
+    ))
+  })
+
+  it('should return null when pieceCid is not a CID object', () => {
+    // Create contextID with object that isn't a CID
+    const notACid = { not: 'a-cid' }
+    // Make sure it's recognized as a regular object
+    const encoded = cbor.encode([validPieceSize, notACid])
+    /** @type {{'/': {bytes: string}}} */
+    const contextID = {
+      '/': {
+        bytes: Buffer.from(encoded).toString('base64')
+      }
+    }
+
+    assert.strictEqual(extractPieceInfoFromContextID(contextID, { logDebugMessage }), null)
+    assert.ok(debugMessages.some(msg =>
+      msg.includes('pieceCID is not a CID')
+    ))
+  })
+
+  it('should handle CBOR decoding errors', () => {
+    // Create contextID with invalid CBOR data
+    /** @type {{'/': {bytes: string}}} */
+    const contextID = {
+      '/': {
+        bytes: 'ghsA'.concat('invalid-cbor')
+      }
+    }
+
+    assert.strictEqual(extractPieceInfoFromContextID(contextID, { logDebugMessage }), null)
+    assert.ok(debugMessages.some(msg =>
+      msg.includes('Failed to decode ContextID')
+    ))
+  })
+
+  it('should successfully extract pieceCid and pieceSize from valid input', () => {
+    // Create a mock CID for testing
+    const mockCid = CID.parse('baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja')
+
+    const validContextID = createValidContextID(validPieceSize, mockCid)
+    const result = extractPieceInfoFromContextID(validContextID, { logDebugMessage })
+
+    assert.ok(result !== null)
+    assert.strictEqual(result.pieceSize, validPieceSize)
+    assert.strictEqual(result.pieceCid.constructor.name, 'CID')
+    assert.deepStrictEqual(result.pieceCid, mockCid)
+    assert.strictEqual(debugMessages.length, 0, 'No debug messages should be generated for valid input')
+  })
+
+  it('should process the provided valid context example correctly', () => {
+    const result = extractPieceInfoFromContextID(validContextIdExample, { logDebugMessage })
+
+    assert.notStrictEqual(result, null, 'Should not return null for provided valid context example')
+    assert.ok(result !== null)
+    assert.strictEqual(typeof result.pieceSize, 'number', 'Should extract a numeric pieceSize')
+    assert.strictEqual(result.pieceCid.constructor.name, 'CID', 'Should extract a CID object')
+    assert.strictEqual(debugMessages.length, 0, 'No debug messages should be generated for valid input')
+  })
+  const TEST_PIECE_CIDS = [
+    CID.parse('baga6ea4seaqpyzrxp423g6akmu3i2dnd7ymgf37z7m3nwhkbntt3stbocbroqdq'),
+    CID.parse('baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja')
+  ]
+  for (const pieceCid of TEST_PIECE_CIDS) {
+    it('should handle multiple successful extractions', () => {
+      const validContextID = createValidContextID(validPieceSize, pieceCid)
+      const result = extractPieceInfoFromContextID(validContextID, { logDebugMessage })
+
+      assert.notStrictEqual(result, null)
+      assert.ok(result !== null)
+      assert.strictEqual(result.pieceSize, validPieceSize)
+      assert.deepStrictEqual(result.pieceCid, pieceCid)
+      assert.strictEqual(debugMessages.length, 0, 'No debug messages should be generated for valid inputs')
+    })
+  }
 })
 
 describe('processEntries', () => {

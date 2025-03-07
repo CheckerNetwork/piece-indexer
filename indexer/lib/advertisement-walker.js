@@ -256,7 +256,7 @@ export async function fetchAdvertisedPayload (providerAddress, advertisementCid,
         }
       }
      }} */(
-      await fetchCid(providerAddress, advertisementCid, { fetchTimeout })
+      await pRetry(() => fetchCid(providerAddress, advertisementCid, { fetchTimeout }))
     )
   const previousAdvertisementCid = advertisement.PreviousID?.['/']
   debug('advertisement %s %j', advertisementCid, advertisement)
@@ -270,10 +270,15 @@ export async function fetchAdvertisedPayload (providerAddress, advertisementCid,
     return { previousAdvertisementCid }
   }
 
-  const meta = parseMetadata(advertisement.Metadata['/'].bytes)
-  const pieceCid = meta.deal?.PieceCID.toString()
+  let pieceCid = extractPieceInfoFromContextID(advertisement.ContextID)?.pieceCid?.toString()
+  let meta
   if (!pieceCid) {
-    debug('advertisement %s has no PieceCID in metadata: %j', advertisementCid, meta.deal)
+    meta = parseMetadata(advertisement.Metadata['/'].bytes)
+    pieceCid = meta.deal?.PieceCID.toString()
+  }
+
+  if (!pieceCid) {
+    debug('advertisement %s has no PieceCID in ContextId: %j or metadata: %j', advertisementCid, advertisement.ContextID, meta?.deal)
     return {
       error: /** @type {const} */('MISSING_PIECE_CID'),
       previousAdvertisementCid
@@ -408,7 +413,70 @@ export function parseMetadata (meta) {
 }
 
 /**
- * Process entries from either DAG-JSON or DAG-CBOR format
+ * Attempts to extract PieceCID and PieceSize from a ContextID
+ *
+ * @param {{'/': {bytes: string}}|undefined | null} contextID - The ContextID object from an advertisement
+ * @param {object} [options]
+ * @param {function} [options.logDebugMessage] - Function to log debug messages
+ * @returns {{pieceCid: string;pieceSize: number}|null} - Object containing pieceCid and pieceSize if successful, null otherwise
+ */
+export function extractPieceInfoFromContextID (contextID, { logDebugMessage } = {}) {
+  logDebugMessage ??= debug
+  // Check if ContextID exists and has the expected structure
+  if (!contextID || !contextID['/'] || !contextID['/'].bytes) {
+    logDebugMessage('Advertisement %s has no properly formatted ContextID', contextID)
+    return null
+  }
+
+  try {
+    // Get the bytes from the ContextID
+    const contextIDBytes = contextID['/'].bytes
+
+    const bytes = Buffer.from(contextIDBytes, 'base64')
+    const decoded = cbor.decode(bytes)
+
+    // Validate the decoded data with specific error messages
+    if (!Array.isArray(decoded)) {
+      logDebugMessage('ContextID validation failed for %s: decoded value is not an array, got %s',
+        contextID, typeof decoded)
+      return null
+    }
+
+    if (decoded.length !== 2) {
+      logDebugMessage('ContextID validation failed for %s: expected array with 2 items, got %d items',
+        contextID, decoded.length)
+      return null
+    }
+    const [pieceSize, pieceCid] = decoded
+    if (typeof pieceSize !== 'number') {
+      logDebugMessage('ContextID validation failed for %s: pieceSize is not a number, got %s',
+        contextID, typeof decoded[0])
+      return null
+    }
+    if (!(typeof pieceCid === 'object')) {
+      logDebugMessage('ContextID validation failed for %s: pieceCID is not an object, got %s',
+        contextID, typeof pieceCid)
+      return null
+    }
+    if (pieceCid === null || pieceCid === undefined) {
+      logDebugMessage('ContextID validation failed for %s: pieceCID is null or undefined',
+        contextID)
+      return null
+    }
+    if (!(pieceCid?.constructor?.name === 'CID')) {
+      logDebugMessage('ContextID validation failed for %s: pieceCID is not a CID, got %s',
+        contextID, pieceCid?.constructor?.name)
+      return null
+    }
+
+    return { pieceCid, pieceSize }
+  } catch (err) {
+    logDebugMessage('Failed to decode ContextID for advertisement %s: %s', contextID, err)
+    return null
+  }
+}
+
+/** Process entries from either DAG-JSON or DAG-CBOR format
  * @param {string} entriesCid - The CID of the entries
  * @param {{Entries: Array<unknown>}} entriesChunk - The decoded entries
  * @returns {string} The payload CID
