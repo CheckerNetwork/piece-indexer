@@ -270,16 +270,18 @@ export async function fetchAdvertisedPayload (providerAddress, advertisementCid,
     return { previousAdvertisementCid }
   }
 
-  let pieceCid = extractPieceCidFromContextID(advertisement.ContextID)?.pieceCid?.toString()
+  let pieceCid = extractPieceInfoFromContextID(advertisement.ContextID)?.pieceCid?.toString()
+  let meta
   if (!pieceCid) {
-    const meta = parseMetadata(advertisement.Metadata['/'].bytes)
+    meta = parseMetadata(advertisement.Metadata['/'].bytes)
     pieceCid = meta.deal?.PieceCID.toString()
-    if (!pieceCid) {
-      debug('advertisement %s has no PieceCID in ContextId: %j or metadata: %j', advertisementCid, advertisement.ContextID, meta.deal)
-      return {
-        error: /** @type {const} */('MISSING_PIECE_CID'),
-        previousAdvertisementCid
-      }
+  }
+
+  if (!pieceCid) {
+    debug('advertisement %s has no PieceCID in ContextId: %j or metadata: %j', advertisementCid, advertisement.ContextID, meta?.deal)
+    return {
+      error: /** @type {const} */('MISSING_PIECE_CID'),
+      previousAdvertisementCid
     }
   }
 
@@ -418,10 +420,11 @@ export function parseMetadata (meta) {
  * @param {function} [options.logDebugMessage] - Function to log debug messages
  * @returns {{pieceCid: string;pieceSize: number}|null} - Object containing pieceCid and pieceSize if successful, null otherwise
  */
-export function extractPieceCidFromContextID (contextID, { logDebugMessage } = {}) {
+export function extractPieceInfoFromContextID (contextID, { logDebugMessage } = {}) {
+  logDebugMessage ??= debug
   // Check if ContextID exists and has the expected structure
   if (!contextID || !contextID['/'] || !contextID['/'].bytes) {
-    (logDebugMessage ?? debug)('Advertisement %s has no properly formatted ContextID', contextID)
+    logDebugMessage('Advertisement %s has no properly formatted ContextID', contextID)
     return null
   }
 
@@ -434,45 +437,41 @@ export function extractPieceCidFromContextID (contextID, { logDebugMessage } = {
 
     // Validate the decoded data with specific error messages
     if (!Array.isArray(decoded)) {
-      (logDebugMessage ?? debug)('ContextID validation failed for %s: decoded value is not an array, got %s',
+      logDebugMessage('ContextID validation failed for %s: decoded value is not an array, got %s',
         contextID, typeof decoded)
       return null
     }
 
     if (decoded.length !== 2) {
-      (logDebugMessage ?? debug)('ContextID validation failed for %s: expected array with 2 items, got %d items',
+      logDebugMessage('ContextID validation failed for %s: expected array with 2 items, got %d items',
         contextID, decoded.length)
       return null
     }
     const [pieceSize, pieceCid] = decoded
     if (typeof pieceSize !== 'number') {
-      (logDebugMessage ?? debug)('ContextID validation failed for %s: pieceSize is not a number, got %s',
+      logDebugMessage('ContextID validation failed for %s: pieceSize is not a number, got %s',
         contextID, typeof decoded[0])
       return null
     }
     if (!(typeof pieceCid === 'object')) {
-      (logDebugMessage ?? debug)('ContextID validation failed for %s: pieceCID is not an object, got %s',
+      logDebugMessage('ContextID validation failed for %s: pieceCID is not an object, got %s',
         contextID, typeof pieceCid)
       return null
     }
     if (pieceCid === null || pieceCid === undefined) {
-      (logDebugMessage ?? debug)('ContextID validation failed for %s: pieceCID is null or undefined',
+      logDebugMessage('ContextID validation failed for %s: pieceCID is null or undefined',
         contextID)
       return null
     }
     if (!(pieceCid?.constructor?.name === 'CID')) {
-      (logDebugMessage ?? debug)('ContextID validation failed for %s: pieceCID is not a CID, got %s',
+      logDebugMessage('ContextID validation failed for %s: pieceCID is not a CID, got %s',
         contextID, pieceCid?.constructor?.name)
       return null
     }
 
     return { pieceCid, pieceSize }
   } catch (err) {
-    if (err instanceof Error) {
-      (logDebugMessage ?? debug)('Failed to decode ContextID for advertisement %s: %s', contextID, err.message)
-    } else {
-      (logDebugMessage ?? debug)('Failed to decode ContextID for advertisement %s: unknown error', contextID)
-    }
+    logDebugMessage('Failed to decode ContextID for advertisement %s: %s', contextID, err)
     return null
   }
 }

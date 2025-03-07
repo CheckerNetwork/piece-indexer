@@ -3,8 +3,9 @@ import { Redis } from 'ioredis'
 import assert from 'node:assert'
 import { after, before, beforeEach, describe, it } from 'node:test'
 import { setTimeout } from 'node:timers/promises'
+import * as util from 'node:util'
 import {
-  extractPieceCidFromContextID,
+  extractPieceInfoFromContextID,
   fetchAdvertisedPayload,
   processNextAdvertisement,
   walkOneStep
@@ -567,10 +568,8 @@ describe('extractPieceCidFromContextID', () => {
   /**
    * @type {(format: string, ...args: any[]) => void}
    */
-  const debug = (format, ...args) => {
-    debugMessages.push(typeof format === 'string'
-      ? format.replace(/%s/g, () => String(args.shift())).replace(/%d/g, () => String(args.shift()))
-      : String(format))
+  const logDebugMessage = (format, ...args) => {
+    debugMessages.push(util.format(format, ...args))
   }
 
   /**
@@ -610,8 +609,8 @@ describe('extractPieceCidFromContextID', () => {
   })
 
   it('should return null when contextID is null or undefined', () => {
-    assert.strictEqual(extractPieceCidFromContextID(null, { logDebugMessage: debug }), null)
-    assert.strictEqual(extractPieceCidFromContextID(undefined, { logDebugMessage: debug }), null)
+    assert.strictEqual(extractPieceInfoFromContextID(null, { logDebugMessage }), null)
+    assert.strictEqual(extractPieceInfoFromContextID(undefined, { logDebugMessage }), null)
     assert.ok(debugMessages.some(msg =>
       msg.includes('has no properly formatted ContextID')
     ))
@@ -619,12 +618,9 @@ describe('extractPieceCidFromContextID', () => {
 
   it('should return null when contextID is missing the expected structure', () => {
     // We are testing cases that violate the expected type structures
-    // @ts-ignore
-    assert.strictEqual(extractPieceCidFromContextID({}, { logDebugMessage: debug }), null)
-    // @ts-ignore
-    assert.strictEqual(extractPieceCidFromContextID({ '/': {} }, { logDebugMessage: debug }), null)
-    // @ts-ignore
-    assert.strictEqual(extractPieceCidFromContextID({ wrong: 'structure' }, { logDebugMessage: debug }), null)
+    assert.strictEqual(extractPieceInfoFromContextID(/** @type {any} */ ({}), { logDebugMessage }), null)
+    assert.strictEqual(extractPieceInfoFromContextID(/** @type {any} */({ '/': {} }), { logDebugMessage }), null)
+    assert.strictEqual(extractPieceInfoFromContextID(/** @type {any} */({ wrong: 'structure' }), { logDebugMessage }), null)
     assert.ok(debugMessages.every(msg =>
       msg.includes('has no properly formatted ContextID')
     ))
@@ -639,7 +635,7 @@ describe('extractPieceCidFromContextID', () => {
       }
     }
 
-    assert.strictEqual(extractPieceCidFromContextID(contextID, { logDebugMessage: debug }), null)
+    assert.strictEqual(extractPieceInfoFromContextID(contextID, { logDebugMessage }), null)
     assert.ok(debugMessages.some(msg =>
       msg.includes('decoded value is not an array')
     ))
@@ -665,8 +661,8 @@ describe('extractPieceCidFromContextID', () => {
       }
     }
 
-    assert.strictEqual(extractPieceCidFromContextID(contextIDTooFew, { logDebugMessage: debug }), null)
-    assert.strictEqual(extractPieceCidFromContextID(contextIDTooMany, { logDebugMessage: debug }), null)
+    assert.strictEqual(extractPieceInfoFromContextID(contextIDTooFew, { logDebugMessage }), null)
+    assert.strictEqual(extractPieceInfoFromContextID(contextIDTooMany, { logDebugMessage }), null)
     assert.ok(debugMessages.some(msg =>
       msg.includes('expected array with 2 items')
     ))
@@ -684,7 +680,7 @@ describe('extractPieceCidFromContextID', () => {
       }
     }
 
-    assert.strictEqual(extractPieceCidFromContextID(contextID, { logDebugMessage: debug }), null)
+    assert.strictEqual(extractPieceInfoFromContextID(contextID, { logDebugMessage }), null)
     assert.ok(debugMessages.some(msg =>
       msg.includes('pieceSize is not a number')
     ))
@@ -699,7 +695,7 @@ describe('extractPieceCidFromContextID', () => {
       }
     }
 
-    assert.strictEqual(extractPieceCidFromContextID(contextID, { logDebugMessage: debug }), null)
+    assert.strictEqual(extractPieceInfoFromContextID(contextID, { logDebugMessage }), null)
     assert.ok(debugMessages.some(msg =>
       msg.includes('pieceCID is not an object')
     ))
@@ -716,7 +712,7 @@ describe('extractPieceCidFromContextID', () => {
       }
     }
 
-    assert.strictEqual(extractPieceCidFromContextID(contextIDNull, { logDebugMessage: debug }), null)
+    assert.strictEqual(extractPieceInfoFromContextID(contextIDNull, { logDebugMessage }), null)
     assert.ok(debugMessages.some(msg =>
       msg.includes('pieceCID is null or undefined')
     ))
@@ -734,7 +730,7 @@ describe('extractPieceCidFromContextID', () => {
       }
     }
 
-    assert.strictEqual(extractPieceCidFromContextID(contextID, { logDebugMessage: debug }), null)
+    assert.strictEqual(extractPieceInfoFromContextID(contextID, { logDebugMessage }), null)
     assert.ok(debugMessages.some(msg =>
       msg.includes('pieceCID is not a CID')
     ))
@@ -749,7 +745,7 @@ describe('extractPieceCidFromContextID', () => {
       }
     }
 
-    assert.strictEqual(extractPieceCidFromContextID(contextID, { logDebugMessage: debug }), null)
+    assert.strictEqual(extractPieceInfoFromContextID(contextID, { logDebugMessage }), null)
     assert.ok(debugMessages.some(msg =>
       msg.includes('Failed to decode ContextID')
     ))
@@ -760,7 +756,7 @@ describe('extractPieceCidFromContextID', () => {
     const mockCid = CID.parse('baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja')
 
     const validContextID = createValidContextID(validPieceSize, mockCid)
-    const result = extractPieceCidFromContextID(validContextID, { logDebugMessage: debug })
+    const result = extractPieceInfoFromContextID(validContextID, { logDebugMessage })
 
     assert.ok(result !== null)
     assert.strictEqual(result.pieceSize, validPieceSize)
@@ -770,7 +766,7 @@ describe('extractPieceCidFromContextID', () => {
   })
 
   it('should process the provided valid context example correctly', () => {
-    const result = extractPieceCidFromContextID(validContextIdExample, { logDebugMessage: debug })
+    const result = extractPieceInfoFromContextID(validContextIdExample, { logDebugMessage })
 
     assert.notStrictEqual(result, null, 'Should not return null for provided valid context example')
     assert.ok(result !== null)
@@ -778,32 +774,22 @@ describe('extractPieceCidFromContextID', () => {
     assert.strictEqual(result.pieceCid.constructor.name, 'CID', 'Should extract a CID object')
     assert.strictEqual(debugMessages.length, 0, 'No debug messages should be generated for valid input')
   })
-
-  it('should handle multiple successful extractions', () => {
-    // Test with different valid CIDs
-    const mockCids = [
-      CID.parse('baga6ea4seaqpyzrxp423g6akmu3i2dnd7ymgf37z7m3nwhkbntt3stbocbroqdq'),
-      CID.parse('baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja')
-    ]
-
-    /** @type {Array<{pieceSize: number, pieceCid: import('multiformats/cid').CID}>} */
-    const testCases = [
-      { pieceSize: validPieceSize, pieceCid: mockCids[0] },
-      { pieceSize: validPieceSize, pieceCid: mockCids[1] }
-    ]
-
-    for (const { pieceSize, pieceCid } of testCases) {
-      const validContextID = createValidContextID(pieceSize, pieceCid)
-      const result = extractPieceCidFromContextID(validContextID, { logDebugMessage: debug })
+  const TEST_PIECE_CIDS = [
+    CID.parse('baga6ea4seaqpyzrxp423g6akmu3i2dnd7ymgf37z7m3nwhkbntt3stbocbroqdq'),
+    CID.parse('baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja')
+  ]
+  for (const pieceCid of TEST_PIECE_CIDS) {
+    it('should handle multiple successful extractions', () => {
+      const validContextID = createValidContextID(validPieceSize, pieceCid)
+      const result = extractPieceInfoFromContextID(validContextID, { logDebugMessage })
 
       assert.notStrictEqual(result, null)
       assert.ok(result !== null)
-      assert.strictEqual(result.pieceSize, pieceSize)
+      assert.strictEqual(result.pieceSize, validPieceSize)
       assert.deepStrictEqual(result.pieceCid, pieceCid)
-    }
-
-    assert.strictEqual(debugMessages.length, 0, 'No debug messages should be generated for valid inputs')
-  })
+      assert.strictEqual(debugMessages.length, 0, 'No debug messages should be generated for valid inputs')
+    })
+  }
 })
 
 describe('processEntries', () => {
