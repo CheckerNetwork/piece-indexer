@@ -19,6 +19,7 @@ jobs:
           - debug
           - node
           - multiformats
+          - ioredis
     steps:
       - name: Dependabot metadata
         id: metadata
