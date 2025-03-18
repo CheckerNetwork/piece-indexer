@@ -6,7 +6,7 @@ import { CID } from 'multiformats/cid'
 import * as multihash from 'multiformats/hashes/digest'
 import assert from 'node:assert'
 import timers from 'node:timers/promises'
-import { assertOkResponse } from './http-assertions.js'
+import { assertOkResponse } from 'assert-ok-response'
 import pRetry from 'p-retry'
 
 /** @import { ProviderInfo, WalkerState } from './typings.js' */

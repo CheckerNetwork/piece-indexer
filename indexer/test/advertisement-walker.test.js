@@ -15,7 +15,7 @@ import {
 import pRetry from 'p-retry'
 import { givenHttpServer } from './helpers/http-server.js'
 import { FRISBII_ADDRESS, FRISBII_AD_CID } from './helpers/test-data.js'
-import { assertOkResponse } from '../lib/http-assertions.js'
+import { assertOkResponse } from 'assert-ok-response'
 import * as stream from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import * as cbor from '@ipld/dag-cbor'
