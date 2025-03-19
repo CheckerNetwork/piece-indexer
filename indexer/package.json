@@ -8,13 +8,13 @@
     "test": "node --test --test-reporter=spec"
   },
   "devDependencies": {
-    "assert-ok-response": "^1.0.0",
     "standard": "^17.1.2"
   },
   "dependencies": {
     "@filecoin-station/spark-piece-indexer-repository": "^1.0.0",
     "@ipld/dag-cbor": "^9.2.2",
     "@sentry/node": "^9.6.0",
+    "assert-ok-response": "^1.0.0",
     "debug": "^4.4.0",
     "ioredis": "^5.6.0",
     "multiformats": "^13.3.2",
