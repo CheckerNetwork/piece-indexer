@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/node'
 import createDebug from 'debug'
 import timers from 'node:timers/promises'
-import { assertOkResponse } from './http-assertions.js'
+import { assertOkResponse } from 'assert-ok-response'
 import { multiaddrToHttpUrl } from './vendored/multiaddr.js'
 
 const debug = createDebug('spark-piece-indexer:ipni-watcher')
