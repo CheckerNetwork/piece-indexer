@@ -82,9 +82,11 @@ jobs:
       - if: failure()
         uses: slackapi/slack-github-action@v2.0.0
         with:
-          channel-id: alerts
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
           payload: |
             {
+              "channel": "alerts",
               "text": "Deployment of `${{ github.event.repository.name }}` failed",
               "blocks": [
                 {
@@ -96,8 +98,6 @@ jobs:
                 }
               ]
             }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
 
   deploy-api:
     if: github.ref == 'refs/heads/main'
@@ -112,9 +112,11 @@ jobs:
       - if: failure()
         uses: slackapi/slack-github-action@v2.0.0
         with:
-          channel-id: alerts
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
           payload: |
             {
+              "channel": "alerts",
               "text": "Deployment of `${{ github.event.repository.name }}` failed",
               "blocks": [
                 {
@@ -126,8 +128,6 @@ jobs:
                 }
               ]
             }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
 
   lint-all:
     runs-on: ubuntu-latest
