@@ -20,6 +20,7 @@ jobs:
           - node
           - multiformats
           - ioredis
+          - fastify
     steps:
       - name: Dependabot metadata
         id: metadata
