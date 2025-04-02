@@ -9,8 +9,8 @@
     "repository"
   ],
   "scripts": {
-    "lint": "prettier --check . && standard",
-    "lint:fix": "prettier --write . && standard --fix .",
+    "lint": "eslint && prettier --check .",
+    "lint:fix": "eslint --fix && prettier --write .",
     "test:types": "tsc -p .",
     "test:unit": "npm test --workspaces --if-present",
     "test": "npm run lint && npm run test:types && npm run test:unit"
@@ -27,8 +27,9 @@
   "devDependencies": {
     "@types/debug": "^4.1.12",
     "@types/node": "^22.13.17",
+    "eslint": "^9.23.0",
+    "neostandard": "^0.12.1",
     "prettier": "^3.5.3",
-    "standard": "^17.1.2",
     "typescript": "^5.8.2"
   }
 }
