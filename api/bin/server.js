@@ -9,7 +9,7 @@ const {
   HOST = '127.0.0.1',
   DOMAIN: domain = 'localhost',
   REDIS_URL: redisUrl = 'redis://localhost:6379',
-  REQUEST_LOGGING: requestLogging = 'true'
+  REQUEST_LOGGING: requestLogging = 'true',
 } = process.env
 
 const redisUrlParsed = new URL(redisUrl)
@@ -19,7 +19,7 @@ const redis = new Redis({
   username: redisUrlParsed.username,
   password: redisUrlParsed.password,
   lazyConnect: true, // call connect() explicitly so that we can exit on connection error
-  family: 6 // required for upstash
+  family: 6, // required for upstash
 })
 
 await redis.connect()
@@ -29,8 +29,8 @@ const app = createApp({
   repository,
   domain,
   logger: {
-    level: ['1', 'true'].includes(requestLogging) ? 'info' : 'error'
-  }
+    level: ['1', 'true'].includes(requestLogging) ? 'info' : 'error',
+  },
 })
 console.log('Starting the http server on host %j port %s', HOST, PORT)
 const baseUrl = await app.listen({ host: HOST, port: Number(PORT) })

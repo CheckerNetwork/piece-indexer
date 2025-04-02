@@ -8,9 +8,9 @@ import {
   extractPieceInfoFromContextID,
   fetchAdvertisedPayload,
   processNextAdvertisement,
-  walkOneStep
-  , processEntries,
-  fetchCid
+  walkOneStep,
+  processEntries,
+  fetchCid,
 } from '../lib/advertisement-walker.js'
 import pRetry from 'p-retry'
 import { givenHttpServer } from './helpers/http-server.js'
@@ -42,27 +42,27 @@ const knownAdvertisement = {
   previousAdCid: 'baguqeerau2rz67nvzcaotgowm2olalanx3eynr2asbjwdkaq3y5umqvdi2ea',
   previousPreviousAdCid: 'baguqeeraa5mjufqdwuwrrrqboctnn3vhdlq63rj3hce2igpzbmae7sazkfea',
   payloadCid: 'bafkreigrnnl64xuevvkhknbhrcqzbdvvmqnchp7ae2a4ulninsjoc5svoq',
-  pieceCid: 'baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja'
+  pieceCid: 'baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja',
 }
 describe('processNextAdvertisement', () => {
   it('ignores non-HTTP(s) addresses and explains the problem in the status', async () => {
     /** @type {ProviderInfo} */
     const providerInfo = {
       providerAddress: '/ip4/127.0.0.1/tcp/80',
-      lastAdvertisementCID: 'baguqeeraTEST'
+      lastAdvertisementCID: 'baguqeeraTEST',
     }
 
     const result = await processNextAdvertisement({
       providerId,
       providerInfo,
-      walkerState: undefined
+      walkerState: undefined,
     })
 
     assert.deepStrictEqual(result, {
       finished: true,
       newState: {
-        status: 'Index provider advertises over an unsupported protocol: /ip4/127.0.0.1/tcp/80'
-      }
+        status: 'Index provider advertises over an unsupported protocol: /ip4/127.0.0.1/tcp/80',
+      },
     })
   })
 
@@ -70,19 +70,20 @@ describe('processNextAdvertisement', () => {
     /** @type {ProviderInfo} */
     const providerInfo = {
       providerAddress: '/dns/meridian.space/http/http-path/invalid%path',
-      lastAdvertisementCID: 'baguqeeraTEST'
+      lastAdvertisementCID: 'baguqeeraTEST',
     }
 
     const result = await processNextAdvertisement({
       providerId,
       providerInfo,
-      walkerState: undefined
+      walkerState: undefined,
     })
     assert.deepStrictEqual(result, {
       finished: true,
       newState: {
-        status: 'Index provider advertises over an unsupported protocol: /dns/meridian.space/http/http-path/invalid%path'
-      }
+        status:
+          'Index provider advertises over an unsupported protocol: /dns/meridian.space/http/http-path/invalid%path',
+      },
     })
   })
 
@@ -90,7 +91,7 @@ describe('processNextAdvertisement', () => {
     /** @type {ProviderInfo} */
     const providerInfo = {
       providerAddress,
-      lastAdvertisementCID: knownAdvertisement.adCid
+      lastAdvertisementCID: knownAdvertisement.adCid,
     }
     const walkerState = undefined
     const result = await processNextAdvertisement({ providerId, providerInfo, walkerState })
@@ -100,13 +101,13 @@ describe('processNextAdvertisement', () => {
         head: providerInfo.lastAdvertisementCID,
         tail: knownAdvertisement.previousAdCid,
         lastHead: undefined,
-        status: `Walking the advertisements from ${knownAdvertisement.adCid}, next step: ${knownAdvertisement.previousAdCid}`
+        status: `Walking the advertisements from ${knownAdvertisement.adCid}, next step: ${knownAdvertisement.previousAdCid}`,
       },
       indexEntry: {
         payloadCid: knownAdvertisement.payloadCid,
-        pieceCid: knownAdvertisement.pieceCid
+        pieceCid: knownAdvertisement.pieceCid,
       },
-      finished: false
+      finished: false,
     })
   })
 
@@ -114,7 +115,7 @@ describe('processNextAdvertisement', () => {
     /** @type {ProviderInfo} */
     const providerInfo = {
       providerAddress,
-      lastAdvertisementCID: knownAdvertisement.adCid
+      lastAdvertisementCID: knownAdvertisement.adCid,
     }
 
     /** @type {WalkerState} */
@@ -122,12 +123,12 @@ describe('processNextAdvertisement', () => {
       head: undefined,
       tail: undefined,
       lastHead: knownAdvertisement.adCid,
-      status: 'some-status'
+      status: 'some-status',
     }
 
     const result = await processNextAdvertisement({ providerId, providerInfo, walkerState })
     assert.deepStrictEqual(result, {
-      finished: true
+      finished: true,
     })
   })
 
@@ -135,7 +136,7 @@ describe('processNextAdvertisement', () => {
     /** @type {ProviderInfo} */
     const providerInfo = {
       providerAddress,
-      lastAdvertisementCID: knownAdvertisement.adCid
+      lastAdvertisementCID: knownAdvertisement.adCid,
     }
 
     /** @type {WalkerState} */
@@ -143,17 +144,24 @@ describe('processNextAdvertisement', () => {
       head: knownAdvertisement.adCid,
       tail: knownAdvertisement.previousAdCid,
       lastHead: undefined,
-      status: 'some-status'
+      status: 'some-status',
     }
 
-    const { newState, indexEntry, finished } = await processNextAdvertisement({ providerId, providerInfo, walkerState })
+    const { newState, indexEntry, finished } = await processNextAdvertisement({
+      providerId,
+      providerInfo,
+      walkerState,
+    })
 
-    assert.deepStrictEqual(newState, /** @type {WalkerState} */({
-      head: walkerState.head, // this does not change during the walk
-      tail: knownAdvertisement.previousPreviousAdCid,
-      lastHead: walkerState.lastHead, // this does not change during the walk
-      status: `Walking the advertisements from ${walkerState.head}, next step: ${knownAdvertisement.previousPreviousAdCid}`
-    }))
+    assert.deepStrictEqual(
+      newState,
+      /** @type {WalkerState} */ ({
+        head: walkerState.head, // this does not change during the walk
+        tail: knownAdvertisement.previousPreviousAdCid,
+        lastHead: walkerState.lastHead, // this does not change during the walk
+        status: `Walking the advertisements from ${walkerState.head}, next step: ${knownAdvertisement.previousPreviousAdCid}`,
+      }),
+    )
 
     assert(indexEntry, 'the step found an index entry')
 
@@ -164,24 +172,31 @@ describe('processNextAdvertisement', () => {
     /** @type {ProviderInfo} */
     const providerInfo = {
       providerAddress,
-      lastAdvertisementCID: knownAdvertisement.adCid
+      lastAdvertisementCID: knownAdvertisement.adCid,
     }
 
     const walkerState = {
       head: undefined, // previous walk was finished
       tail: undefined, // previous walk was finished
       lastHead: knownAdvertisement.previousPreviousAdCid, // an advertisement later in the chain
-      status: 'some-status'
+      status: 'some-status',
     }
 
-    const { newState, finished } = await processNextAdvertisement({ providerId, providerInfo, walkerState })
+    const { newState, finished } = await processNextAdvertisement({
+      providerId,
+      providerInfo,
+      walkerState,
+    })
 
-    assert.deepStrictEqual(newState, /** @type {WalkerState} */({
-      head: knownAdvertisement.adCid,
-      tail: knownAdvertisement.previousAdCid,
-      lastHead: walkerState.lastHead, // this does not change during the walk
-      status: `Walking the advertisements from ${knownAdvertisement.adCid}, next step: ${knownAdvertisement.previousAdCid}`
-    }))
+    assert.deepStrictEqual(
+      newState,
+      /** @type {WalkerState} */ ({
+        head: knownAdvertisement.adCid,
+        tail: knownAdvertisement.previousAdCid,
+        lastHead: walkerState.lastHead, // this does not change during the walk
+        status: `Walking the advertisements from ${knownAdvertisement.adCid}, next step: ${knownAdvertisement.previousAdCid}`,
+      }),
+    )
 
     assert.strictEqual(finished, false, 'finished')
   })
@@ -190,20 +205,27 @@ describe('processNextAdvertisement', () => {
     /** @type {ProviderInfo} */
     const providerInfo = {
       providerAddress: FRISBII_ADDRESS,
-      lastAdvertisementCID: FRISBII_AD_CID
+      lastAdvertisementCID: FRISBII_AD_CID,
     }
 
     const walkerState = undefined
 
-    const { newState, finished } = await processNextAdvertisement({ providerId, providerInfo, walkerState })
+    const { newState, finished } = await processNextAdvertisement({
+      providerId,
+      providerInfo,
+      walkerState,
+    })
 
-    assert.deepStrictEqual(newState, /** @type {WalkerState} */({
-      head: undefined, // we finished the walk, there is no head
-      tail: undefined, // we finished the walk, there is no next step
-      lastHead: FRISBII_AD_CID, // lastHead was updated to head of the walk we finished
-      adsMissingPieceCID: 1,
-      status: `All advertisements from ${newState?.lastHead} to the end of the chain were processed.`
-    }))
+    assert.deepStrictEqual(
+      newState,
+      /** @type {WalkerState} */ ({
+        head: undefined, // we finished the walk, there is no head
+        tail: undefined, // we finished the walk, there is no next step
+        lastHead: FRISBII_AD_CID, // lastHead was updated to head of the walk we finished
+        adsMissingPieceCID: 1,
+        status: `All advertisements from ${newState?.lastHead} to the end of the chain were processed.`,
+      }),
+    )
 
     assert.strictEqual(finished, true, 'finished')
   })
@@ -212,25 +234,32 @@ describe('processNextAdvertisement', () => {
     /** @type {ProviderInfo} */
     const providerInfo = {
       providerAddress: FRISBII_ADDRESS,
-      lastAdvertisementCID: FRISBII_AD_CID
+      lastAdvertisementCID: FRISBII_AD_CID,
     }
 
     const walkerState = {
       head: undefined, // previous walk was finished
       tail: undefined, // previous walk was finished
       lastHead: knownAdvertisement.adCid, // arbitrary advertisement
-      status: 'some-status'
+      status: 'some-status',
     }
 
-    const { newState, finished } = await processNextAdvertisement({ providerId, providerInfo, walkerState })
+    const { newState, finished } = await processNextAdvertisement({
+      providerId,
+      providerInfo,
+      walkerState,
+    })
 
-    assert.deepStrictEqual(newState, /** @type {WalkerState} */({
-      head: undefined, // we finished the walk, there is no head
-      tail: undefined, // we finished the walk, there is no next step
-      lastHead: FRISBII_AD_CID, // lastHead was updated to head of the walk we finished
-      adsMissingPieceCID: 1,
-      status: `All advertisements from ${newState?.lastHead} to the end of the chain were processed.`
-    }))
+    assert.deepStrictEqual(
+      newState,
+      /** @type {WalkerState} */ ({
+        head: undefined, // we finished the walk, there is no head
+        tail: undefined, // we finished the walk, there is no next step
+        lastHead: FRISBII_AD_CID, // lastHead was updated to head of the walk we finished
+        adsMissingPieceCID: 1,
+        status: `All advertisements from ${newState?.lastHead} to the end of the chain were processed.`,
+      }),
+    )
 
     assert.strictEqual(finished, true, 'finished')
   })
@@ -239,7 +268,7 @@ describe('processNextAdvertisement', () => {
     /** @type {ProviderInfo} */
     const providerInfo = {
       providerAddress,
-      lastAdvertisementCID: knownAdvertisement.adCid
+      lastAdvertisementCID: knownAdvertisement.adCid,
     }
 
     /** @type {WalkerState} */
@@ -247,17 +276,24 @@ describe('processNextAdvertisement', () => {
       head: knownAdvertisement.adCid,
       tail: knownAdvertisement.previousAdCid,
       lastHead: knownAdvertisement.previousPreviousAdCid,
-      status: 'some-status'
+      status: 'some-status',
     }
 
-    const { newState, indexEntry, finished } = await processNextAdvertisement({ providerId, providerInfo, walkerState })
+    const { newState, indexEntry, finished } = await processNextAdvertisement({
+      providerId,
+      providerInfo,
+      walkerState,
+    })
 
-    assert.deepStrictEqual(newState, /** @type {WalkerState} */({
-      head: undefined, // we finished the walk, there is no head
-      tail: undefined, // we finished the walk, there is no next step
-      lastHead: walkerState.head, // lastHead was updated to head of the walk we finished
-      status: `All advertisements from ${newState?.lastHead} to the end of the chain were processed.`
-    }))
+    assert.deepStrictEqual(
+      newState,
+      /** @type {WalkerState} */ ({
+        head: undefined, // we finished the walk, there is no head
+        tail: undefined, // we finished the walk, there is no next step
+        lastHead: walkerState.head, // lastHead was updated to head of the walk we finished
+        status: `All advertisements from ${newState?.lastHead} to the end of the chain were processed.`,
+      }),
+    )
 
     assert(indexEntry, 'the step found an index entry')
 
@@ -268,10 +304,14 @@ describe('processNextAdvertisement', () => {
     /** @type {ProviderInfo} */
     const providerInfo = {
       providerAddress: 'http://127.0.0.1:80/',
-      lastAdvertisementCID: 'baguqeeraTEST'
+      lastAdvertisementCID: 'baguqeeraTEST',
     }
 
-    const result = await processNextAdvertisement({ providerId, providerInfo, walkerState: undefined })
+    const result = await processNextAdvertisement({
+      providerId,
+      providerInfo,
+      walkerState: undefined,
+    })
 
     assert.deepStrictEqual(result, {
       failed: true,
@@ -279,8 +319,9 @@ describe('processNextAdvertisement', () => {
         head: 'baguqeeraTEST',
         tail: 'baguqeeraTEST',
         lastHead: undefined,
-        status: 'Error processing baguqeeraTEST: HTTP request to http://127.0.0.1/ipni/v1/ad/baguqeeraTEST failed: connect ECONNREFUSED 127.0.0.1:80'
-      }
+        status:
+          'Error processing baguqeeraTEST: HTTP request to http://127.0.0.1/ipni/v1/ad/baguqeeraTEST failed: connect ECONNREFUSED 127.0.0.1:80',
+      },
     })
   })
 
@@ -294,14 +335,14 @@ describe('processNextAdvertisement', () => {
     /** @type {ProviderInfo} */
     const providerInfo = {
       providerAddress: serverUrl,
-      lastAdvertisementCID: 'baguqeeraTEST'
+      lastAdvertisementCID: 'baguqeeraTEST',
     }
 
     const result = await processNextAdvertisement({
       providerId,
       providerInfo,
       walkerState: undefined,
-      fetchTimeout: 1
+      fetchTimeout: 1,
     })
 
     assert.deepStrictEqual(result, {
@@ -310,8 +351,8 @@ describe('processNextAdvertisement', () => {
         head: 'baguqeeraTEST',
         tail: 'baguqeeraTEST',
         lastHead: undefined,
-        status: `Error processing baguqeeraTEST: HTTP request to ${serverUrl}ipni/v1/ad/baguqeeraTEST failed: operation timed out`
-      }
+        status: `Error processing baguqeeraTEST: HTTP request to ${serverUrl}ipni/v1/ad/baguqeeraTEST failed: operation timed out`,
+      },
     })
   })
 
@@ -334,13 +375,13 @@ describe('processNextAdvertisement', () => {
     /** @type {ProviderInfo} */
     const providerInfo = {
       providerAddress: serverUrl,
-      lastAdvertisementCID: adCid
+      lastAdvertisementCID: adCid,
     }
 
     const result = await processNextAdvertisement({
       providerId,
       providerInfo,
-      walkerState: undefined
+      walkerState: undefined,
     })
 
     assert.deepStrictEqual(result, {
@@ -351,8 +392,8 @@ describe('processNextAdvertisement', () => {
         head: adCid,
         tail: previousAdCid,
         lastHead: undefined,
-        status: `Walking the advertisements from ${adCid}, next step: ${previousAdCid}`
-      }
+        status: `Walking the advertisements from ${adCid}, next step: ${previousAdCid}`,
+      },
     })
   })
 
@@ -360,13 +401,13 @@ describe('processNextAdvertisement', () => {
     /** @type {ProviderInfo} */
     const providerInfo = {
       providerAddress: FRISBII_ADDRESS,
-      lastAdvertisementCID: FRISBII_AD_CID
+      lastAdvertisementCID: FRISBII_AD_CID,
     }
 
     const result = await processNextAdvertisement({
       providerId,
       providerInfo,
-      walkerState: undefined
+      walkerState: undefined,
     })
 
     assert.deepStrictEqual(result, {
@@ -377,39 +418,53 @@ describe('processNextAdvertisement', () => {
         head: undefined,
         tail: undefined,
         lastHead: FRISBII_AD_CID,
-        status: `All advertisements from ${FRISBII_AD_CID} to the end of the chain were processed.`
-      }
+        status: `All advertisements from ${FRISBII_AD_CID} to the end of the chain were processed.`,
+      },
     })
   })
   it('correctly processes Curio advertisement with DAG-CBOR entries', async function () {
     // Real Curio provider details
     const curioProviderId = '12D3KooWJ91c6xQshrNe7QAXPFAaeRrHWq2UrgXGPf8UmMZMwyZ5'
-    const curioProviderAddress = multiaddrToHttpUrl('/dns/f03303347-market.duckdns.org/https/http-path/%2Fipni-provider%2F12D3KooWJ91c6xQshrNe7QAXPFAaeRrHWq2UrgXGPf8UmMZMwyZ5')
+    const curioProviderAddress = multiaddrToHttpUrl(
+      '/dns/f03303347-market.duckdns.org/https/http-path/%2Fipni-provider%2F12D3KooWJ91c6xQshrNe7QAXPFAaeRrHWq2UrgXGPf8UmMZMwyZ5',
+    )
     const advertisementCid = 'baguqeerakqnjugtecgj5hhfmnh46pthk5k3vy6vf4bw3vpmwmudknlatun5a'
 
     const providerInfo = {
       providerAddress: curioProviderAddress,
-      lastAdvertisementCID: advertisementCid
+      lastAdvertisementCID: advertisementCid,
     }
 
     // Call processNextAdvertisement against the real provider
     const result = await processNextAdvertisement({
       providerId: curioProviderId,
       providerInfo,
-      walkerState: undefined
+      walkerState: undefined,
     })
 
     // Basic verification
     assert(result.indexEntry, 'Should return an indexEntry')
-    assert.strictEqual(result.newState.head, advertisementCid, 'Head should be the advertisement CID')
+    assert.strictEqual(
+      result.newState.head,
+      advertisementCid,
+      'Head should be the advertisement CID',
+    )
 
     // Verify piece and payload CIDs are present
     assert(result.indexEntry.pieceCid, 'Piece CID should be present')
-    assert.strictEqual(result.indexEntry.pieceCid, 'baga6ea4seaqfpjfs473fni3pv22fjrv3yd5cw3zgdlbumo5u5e4fvalosqwkynq', 'Piece CID should have correct prefix')
+    assert.strictEqual(
+      result.indexEntry.pieceCid,
+      'baga6ea4seaqfpjfs473fni3pv22fjrv3yd5cw3zgdlbumo5u5e4fvalosqwkynq',
+      'Piece CID should have correct prefix',
+    )
     const parsedPieceCid = CID.parse(result.indexEntry.pieceCid)
     assert.strictEqual(parsedPieceCid.code, 61697)
 
-    assert.strictEqual(result.indexEntry.payloadCid, 'bafkreih74ljilat42tptlywlnuejfkyigun6ahor5gmkxemqkvvdftasg4', 'Payload CID should be present')
+    assert.strictEqual(
+      result.indexEntry.payloadCid,
+      'bafkreih74ljilat42tptlywlnuejfkyigun6ahor5gmkxemqkvvdftasg4',
+      'Payload CID should be present',
+    )
     const parsedPayloadCid = CID.parse(result.indexEntry.payloadCid)
     assert.strictEqual(parsedPayloadCid.code, 85)
   })
@@ -420,23 +475,29 @@ describe('processNextAdvertisement', () => {
 describe('fetchAdvertisedPayload', () => {
   it('returns previousAdvertisementCid, pieceCid and payloadCid for Graphsync retrievals', async () => {
     const result = await fetchAdvertisedPayload(providerAddress, knownAdvertisement.adCid)
-    assert.deepStrictEqual(result, /** @type {AdvertisedPayload} */({
-      entry: {
-        payloadCid: knownAdvertisement.payloadCid,
-        pieceCid: knownAdvertisement.pieceCid
-      },
-      previousAdvertisementCid: knownAdvertisement.previousAdCid
-    }))
+    assert.deepStrictEqual(
+      result,
+      /** @type {AdvertisedPayload} */ ({
+        entry: {
+          payloadCid: knownAdvertisement.payloadCid,
+          pieceCid: knownAdvertisement.pieceCid,
+        },
+        previousAdvertisementCid: knownAdvertisement.previousAdCid,
+      }),
+    )
   })
 
   it('returns MISSING_PIECE_CID error for HTTP retrievals', async () => {
     const result = await fetchAdvertisedPayload(FRISBII_ADDRESS, FRISBII_AD_CID)
-    assert.deepStrictEqual(result, /** @type {AdvertisedPayload} */({
-      error: 'MISSING_PIECE_CID',
-      // Our Frisbii instance announced only one advertisement
-      // That's unrelated to HTTP vs Graphsync retrievals
-      previousAdvertisementCid: undefined
-    }))
+    assert.deepStrictEqual(
+      result,
+      /** @type {AdvertisedPayload} */ ({
+        error: 'MISSING_PIECE_CID',
+        // Our Frisbii instance announced only one advertisement
+        // That's unrelated to HTTP vs Graphsync retrievals
+        previousAdvertisementCid: undefined,
+      }),
+    )
   })
 })
 
@@ -466,7 +527,7 @@ describe('walkOneStep', () => {
     /** @type {ProviderInfo} */
     const providerInfo = {
       providerAddress,
-      lastAdvertisementCID: nextHead
+      lastAdvertisementCID: nextHead,
     }
 
     const result = await walkOneStep({ repository, providerId, providerInfo })
@@ -474,16 +535,22 @@ describe('walkOneStep', () => {
     assert.strictEqual(!!result.failed, false)
 
     const newState = await repository.getWalkerState(providerId)
-    assert.deepStrictEqual(newState, /** @type {WalkerState} */({
-      head: nextHead,
-      tail: knownAdvertisement.previousAdCid,
-      // lastHead: undefined,
-      status: `Walking the advertisements from ${nextHead}, next step: ${knownAdvertisement.previousAdCid}`
-    }))
+    assert.deepStrictEqual(
+      newState,
+      /** @type {WalkerState} */ ({
+        head: nextHead,
+        tail: knownAdvertisement.previousAdCid,
+        // lastHead: undefined,
+        status: `Walking the advertisements from ${nextHead}, next step: ${knownAdvertisement.previousAdCid}`,
+      }),
+    )
 
     assert.deepStrictEqual(result.walkerState, { lastHead: undefined, ...newState })
 
-    const pieceBlocks = await repository.getPiecePayloadBlocks(providerId, knownAdvertisement.pieceCid)
+    const pieceBlocks = await repository.getPiecePayloadBlocks(
+      providerId,
+      knownAdvertisement.pieceCid,
+    )
     assert.deepStrictEqual(pieceBlocks, [knownAdvertisement.payloadCid])
   })
 })
@@ -502,7 +569,7 @@ describe('data schema for REST API', () => {
     /** @type {ProviderInfo} */
     const providerInfo = {
       providerAddress,
-      lastAdvertisementCID: knownAdvertisement.adCid
+      lastAdvertisementCID: knownAdvertisement.adCid,
     }
 
     await walkOneStep({ repository, providerId, providerInfo })
@@ -545,7 +612,7 @@ describe('data schema for REST API', () => {
       lastHeadWalkedFrom: walkerState.lastHead ?? walkerState.head,
       adsMissingPieceCID: walkerState.adsMissingPieceCID ?? 0,
       entriesNotRetrievable: walkerState.entriesNotRetrievable ?? 0,
-      piecesIndexed: await repository.countPiecesIndexed(providerId)
+      piecesIndexed: await repository.countPiecesIndexed(providerId),
     }
 
     assert.deepStrictEqual(response, {
@@ -554,7 +621,7 @@ describe('data schema for REST API', () => {
       lastHeadWalkedFrom: knownAdvertisement.adCid,
       adsMissingPieceCID: 0,
       entriesNotRetrievable: 0,
-      piecesIndexed: 1
+      piecesIndexed: 1,
     })
   })
 })
@@ -589,8 +656,8 @@ describe('extractPieceCidFromContextID', () => {
     const encoded = cbor.encode([pieceSize, pieceCid])
     return {
       '/': {
-        bytes: Buffer.from(encoded).toString('base64')
-      }
+        bytes: Buffer.from(encoded).toString('base64'),
+      },
     }
   }
 
@@ -600,8 +667,8 @@ describe('extractPieceCidFromContextID', () => {
    */
   const validContextIdExample = {
     '/': {
-      bytes: 'ghsAAAAIAAAAANgqWCgAAYHiA5IgIFeksuf2VqNvrrRUxrvA+itvJhrDRju06ThagW6ULKw2'
-    }
+      bytes: 'ghsAAAAIAAAAANgqWCgAAYHiA5IgIFeksuf2VqNvrrRUxrvA+itvJhrDRju06ThagW6ULKw2',
+    },
   }
 
   beforeEach(() => {
@@ -611,19 +678,26 @@ describe('extractPieceCidFromContextID', () => {
   it('should return null when contextID is null or undefined', () => {
     assert.strictEqual(extractPieceInfoFromContextID(null, { logDebugMessage }), null)
     assert.strictEqual(extractPieceInfoFromContextID(undefined, { logDebugMessage }), null)
-    assert.ok(debugMessages.some(msg =>
-      msg.includes('has no properly formatted ContextID')
-    ))
+    assert.ok(debugMessages.some((msg) => msg.includes('has no properly formatted ContextID')))
   })
 
   it('should return null when contextID is missing the expected structure', () => {
     // We are testing cases that violate the expected type structures
-    assert.strictEqual(extractPieceInfoFromContextID(/** @type {any} */ ({}), { logDebugMessage }), null)
-    assert.strictEqual(extractPieceInfoFromContextID(/** @type {any} */({ '/': {} }), { logDebugMessage }), null)
-    assert.strictEqual(extractPieceInfoFromContextID(/** @type {any} */({ wrong: 'structure' }), { logDebugMessage }), null)
-    assert.ok(debugMessages.every(msg =>
-      msg.includes('has no properly formatted ContextID')
-    ))
+    assert.strictEqual(
+      extractPieceInfoFromContextID(/** @type {any} */ ({}), { logDebugMessage }),
+      null,
+    )
+    assert.strictEqual(
+      extractPieceInfoFromContextID(/** @type {any} */ ({ '/': {} }), { logDebugMessage }),
+      null,
+    )
+    assert.strictEqual(
+      extractPieceInfoFromContextID(/** @type {any} */ ({ wrong: 'structure' }), {
+        logDebugMessage,
+      }),
+      null,
+    )
+    assert.ok(debugMessages.every((msg) => msg.includes('has no properly formatted ContextID')))
   })
 
   it('should return null when decoded data is not an array', () => {
@@ -631,14 +705,12 @@ describe('extractPieceCidFromContextID', () => {
     const encoded = cbor.encode('not-an-array')
     const contextID = {
       '/': {
-        bytes: Buffer.from(encoded).toString('base64')
-      }
+        bytes: Buffer.from(encoded).toString('base64'),
+      },
     }
 
     assert.strictEqual(extractPieceInfoFromContextID(contextID, { logDebugMessage }), null)
-    assert.ok(debugMessages.some(msg =>
-      msg.includes('decoded value is not an array')
-    ))
+    assert.ok(debugMessages.some((msg) => msg.includes('decoded value is not an array')))
   })
 
   it('should return null when decoded array does not have exactly 2 items', () => {
@@ -651,21 +723,19 @@ describe('extractPieceCidFromContextID', () => {
 
     const contextIDTooFew = {
       '/': {
-        bytes: Buffer.from(encodedTooFew).toString('base64')
-      }
+        bytes: Buffer.from(encodedTooFew).toString('base64'),
+      },
     }
 
     const contextIDTooMany = {
       '/': {
-        bytes: Buffer.from(encodedTooMany).toString('base64')
-      }
+        bytes: Buffer.from(encodedTooMany).toString('base64'),
+      },
     }
 
     assert.strictEqual(extractPieceInfoFromContextID(contextIDTooFew, { logDebugMessage }), null)
     assert.strictEqual(extractPieceInfoFromContextID(contextIDTooMany, { logDebugMessage }), null)
-    assert.ok(debugMessages.some(msg =>
-      msg.includes('expected array with 2 items')
-    ))
+    assert.ok(debugMessages.some((msg) => msg.includes('expected array with 2 items')))
   })
 
   it('should return null when pieceSize is not a number', () => {
@@ -676,14 +746,12 @@ describe('extractPieceCidFromContextID', () => {
     const encoded = cbor.encode(['not-a-number', mockCid])
     const contextID = {
       '/': {
-        bytes: Buffer.from(encoded).toString('base64')
-      }
+        bytes: Buffer.from(encoded).toString('base64'),
+      },
     }
 
     assert.strictEqual(extractPieceInfoFromContextID(contextID, { logDebugMessage }), null)
-    assert.ok(debugMessages.some(msg =>
-      msg.includes('pieceSize is not a number')
-    ))
+    assert.ok(debugMessages.some((msg) => msg.includes('pieceSize is not a number')))
   })
 
   it('should return null when pieceCid is not an object', () => {
@@ -691,14 +759,12 @@ describe('extractPieceCidFromContextID', () => {
     const encoded = cbor.encode([validPieceSize, 'not-an-object'])
     const contextID = {
       '/': {
-        bytes: Buffer.from(encoded).toString('base64')
-      }
+        bytes: Buffer.from(encoded).toString('base64'),
+      },
     }
 
     assert.strictEqual(extractPieceInfoFromContextID(contextID, { logDebugMessage }), null)
-    assert.ok(debugMessages.some(msg =>
-      msg.includes('pieceCID is not an object')
-    ))
+    assert.ok(debugMessages.some((msg) => msg.includes('pieceCID is not an object')))
   })
 
   it('should return null when pieceCid is null', () => {
@@ -708,14 +774,12 @@ describe('extractPieceCidFromContextID', () => {
     /** @type {{'/': {bytes: string}}} */
     const contextIDNull = {
       '/': {
-        bytes: Buffer.from(encodedNull).toString('base64')
-      }
+        bytes: Buffer.from(encodedNull).toString('base64'),
+      },
     }
 
     assert.strictEqual(extractPieceInfoFromContextID(contextIDNull, { logDebugMessage }), null)
-    assert.ok(debugMessages.some(msg =>
-      msg.includes('pieceCID is null or undefined')
-    ))
+    assert.ok(debugMessages.some((msg) => msg.includes('pieceCID is null or undefined')))
   })
 
   it('should return null when pieceCid is not a CID object', () => {
@@ -726,14 +790,12 @@ describe('extractPieceCidFromContextID', () => {
     /** @type {{'/': {bytes: string}}} */
     const contextID = {
       '/': {
-        bytes: Buffer.from(encoded).toString('base64')
-      }
+        bytes: Buffer.from(encoded).toString('base64'),
+      },
     }
 
     assert.strictEqual(extractPieceInfoFromContextID(contextID, { logDebugMessage }), null)
-    assert.ok(debugMessages.some(msg =>
-      msg.includes('pieceCID is not a CID')
-    ))
+    assert.ok(debugMessages.some((msg) => msg.includes('pieceCID is not a CID')))
   })
 
   it('should handle CBOR decoding errors', () => {
@@ -741,14 +803,12 @@ describe('extractPieceCidFromContextID', () => {
     /** @type {{'/': {bytes: string}}} */
     const contextID = {
       '/': {
-        bytes: 'ghsA'.concat('invalid-cbor')
-      }
+        bytes: 'ghsA'.concat('invalid-cbor'),
+      },
     }
 
     assert.strictEqual(extractPieceInfoFromContextID(contextID, { logDebugMessage }), null)
-    assert.ok(debugMessages.some(msg =>
-      msg.includes('Failed to decode ContextID')
-    ))
+    assert.ok(debugMessages.some((msg) => msg.includes('Failed to decode ContextID')))
   })
 
   it('should successfully extract pieceCid and pieceSize from valid input', () => {
@@ -762,7 +822,11 @@ describe('extractPieceCidFromContextID', () => {
     assert.strictEqual(result.pieceSize, validPieceSize)
     assert.strictEqual(result.pieceCid.constructor.name, 'CID')
     assert.deepStrictEqual(result.pieceCid, mockCid)
-    assert.strictEqual(debugMessages.length, 0, 'No debug messages should be generated for valid input')
+    assert.strictEqual(
+      debugMessages.length,
+      0,
+      'No debug messages should be generated for valid input',
+    )
   })
 
   it('should process the provided valid context example correctly', () => {
@@ -772,11 +836,15 @@ describe('extractPieceCidFromContextID', () => {
     assert.ok(result !== null)
     assert.strictEqual(typeof result.pieceSize, 'number', 'Should extract a numeric pieceSize')
     assert.strictEqual(result.pieceCid.constructor.name, 'CID', 'Should extract a CID object')
-    assert.strictEqual(debugMessages.length, 0, 'No debug messages should be generated for valid input')
+    assert.strictEqual(
+      debugMessages.length,
+      0,
+      'No debug messages should be generated for valid input',
+    )
   })
   const TEST_PIECE_CIDS = [
     CID.parse('baga6ea4seaqpyzrxp423g6akmu3i2dnd7ymgf37z7m3nwhkbntt3stbocbroqdq'),
-    CID.parse('baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja')
+    CID.parse('baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja'),
   ]
   for (const pieceCid of TEST_PIECE_CIDS) {
     it('should handle multiple successful extractions', () => {
@@ -787,7 +855,11 @@ describe('extractPieceCidFromContextID', () => {
       assert.ok(result !== null)
       assert.strictEqual(result.pieceSize, validPieceSize)
       assert.deepStrictEqual(result.pieceCid, pieceCid)
-      assert.strictEqual(debugMessages.length, 0, 'No debug messages should be generated for valid inputs')
+      assert.strictEqual(
+        debugMessages.length,
+        0,
+        'No debug messages should be generated for valid inputs',
+      )
     })
   }
 })
@@ -807,14 +879,14 @@ describe('processEntries', () => {
     Entries: [
       {
         '/': {
-          bytes: entryBytes
-        }
-      }
-    ]
+          bytes: entryBytes,
+        },
+      },
+    ],
   }
 
   const dagCborChunk = {
-    Entries: [mh.bytes]
+    Entries: [mh.bytes],
   }
   it('processes DAG-JSON entries correctly', () => {
     // Process the entries with the real CID
@@ -834,10 +906,7 @@ describe('processEntries', () => {
 
   // Error handling tests
   it('throws an error when entries array is empty', () => {
-    assert.throws(
-      () => processEntries(dagCborCid, { Entries: [] }),
-      /No entries found/
-    )
+    assert.throws(() => processEntries(dagCborCid, { Entries: [] }), /No entries found/)
   })
 
   it('throws an error when Entries field is missing', () => {
@@ -845,7 +914,7 @@ describe('processEntries', () => {
       // We need to ignore the type error here because we are testing an error case
       // @ts-ignore
       () => processEntries(dagCborCid, {}),
-      /No entries found/
+      /No entries found/,
     )
   })
 
@@ -853,10 +922,7 @@ describe('processEntries', () => {
     // Use a CID with an unsupported codec
     const unsupportedCid = 'bafkreigrnnl64xuevvkhknbhrcqzbdvvmqnchp7ae2a4ulninsjoc5svoq'
 
-    assert.throws(
-      () => processEntries(unsupportedCid, dagJsonChunk),
-      /Unsupported codec/
-    )
+    assert.throws(() => processEntries(unsupportedCid, dagJsonChunk), /Unsupported codec/)
   })
 
   // Data integrity test using real multihash operations
@@ -889,29 +955,23 @@ describe('processEntries', () => {
       Entries: [
         {
           '/': {
-            bytes: 'This-is-not-valid-base64!'
-          }
-        }
-      ]
+            bytes: 'This-is-not-valid-base64!',
+          },
+        },
+      ],
     }
 
     // We expect an error when processing this malformed data
-    assert.throws(
-      () => processEntries(dagJsonCid, malformedChunk),
-      /Incorrect length/
-    )
+    assert.throws(() => processEntries(dagJsonCid, malformedChunk), /Incorrect length/)
   })
 
   it('handles invalid multihash in DAG-CBOR gracefully', () => {
     const invalidChunk = {
-      Entries: [new Uint8Array([0, 1, 2, 3])] // Too short to be a valid multihash
+      Entries: [new Uint8Array([0, 1, 2, 3])], // Too short to be a valid multihash
     }
 
     // We expect an error when processing this invalid multihash
-    assert.throws(
-      () => processEntries(dagCborCid, invalidChunk),
-      /Incorrect length/
-    )
+    assert.throws(() => processEntries(dagCborCid, invalidChunk), /Incorrect length/)
   })
 })
 
@@ -928,17 +988,15 @@ describe('fetchCid', () => {
   it('uses DAG-JSON codec (0x0129) to parse response as JSON', async () => {
     // Mock fetch to return JSON
     /** @type {typeof fetch} */
-    const mockFetch = () => Promise.resolve(
-      new Response(
-        JSON.stringify(testResponse),
-        {
+    const mockFetch = () =>
+      Promise.resolve(
+        new Response(JSON.stringify(testResponse), {
           status: 200,
           headers: new Headers({
-            'Content-Type': 'application/json'
-          })
-        }
+            'Content-Type': 'application/json',
+          }),
+        }),
       )
-    )
 
     const parsedCid = CID.parse(dagJsonCid)
     assert.strictEqual(parsedCid.code, 297)
@@ -955,10 +1013,12 @@ describe('fetchCid', () => {
     // Mock fetch to return ArrayBuffer
     /** @type {typeof fetch} */
     const mockFetch = () => {
-      return Promise.resolve(new Response(cborData.buffer, {
-        status: 200,
-        headers: { 'Content-Type': 'application/cbor' }
-      }))
+      return Promise.resolve(
+        new Response(cborData.buffer, {
+          status: 200,
+          headers: { 'Content-Type': 'application/cbor' },
+        }),
+      )
     }
 
     const parsedCid = CID.parse(dagCborCid)
@@ -974,9 +1034,7 @@ describe('fetchCid', () => {
     // Mock fetch to return JSON
 
     /** @type {typeof fetch} */
-    const mockFetch = () => Promise.resolve(
-      new Response()
-    )
+    const mockFetch = () => Promise.resolve(new Response())
 
     // Use a CID with a codec that is neither DAG-JSON (0x0129) nor DAG-CBOR (0x71)
     // This is a raw codec (0x55) CID
@@ -989,20 +1047,19 @@ describe('fetchCid', () => {
       assert.fail('fetchCid should have thrown an error')
     } catch (error) {
       assert(error instanceof Error, 'Error should be an instance of Error')
-      assert.ok(error.message.includes(errorMessage), `Error message should include: ${errorMessage}`)
+      assert.ok(
+        error.message.includes(errorMessage),
+        `Error message should include: ${errorMessage}`,
+      )
     }
   })
   it('correctly fetches and processes real DAG-CBOR data from Curio provider', async function () {
     // Use a real Curio provider and known DAG-CBOR CID
-    const curioProviderUrl = 'https://f03303347-market.duckdns.org/ipni-provider/12D3KooWJ91c6xQshrNe7QAXPFAaeRrHWq2UrgXGPf8UmMZMwyZ5'
+    const curioProviderUrl =
+      'https://f03303347-market.duckdns.org/ipni-provider/12D3KooWJ91c6xQshrNe7QAXPFAaeRrHWq2UrgXGPf8UmMZMwyZ5'
     const dagCborCid = 'baguqeeracgnw2ecmhaa6qkb3irrgjjk5zt5fes7wwwpb4aymoaogzyvvbrma'
     /** @type {unknown} */
-    let result = await pRetry(
-      () =>
-        (
-          fetchCid(curioProviderUrl, dagCborCid)
-        )
-    )
+    let result = await pRetry(() => fetchCid(curioProviderUrl, dagCborCid))
 
     // Verify the result has the expected structure for DAG-CBOR entries
     assert(result, 'Expected a non-null result')
@@ -1011,7 +1068,10 @@ describe('fetchCid', () => {
     /** @type {Record<string, unknown>} */
     const resultObj = /** @type {Record<string, unknown>} */ (result)
     assert('Entries' in resultObj, 'Result should have Entries property')
-    assert(typeof resultObj.Entries === 'object' && resultObj.Entries !== null, 'Entries should be an object')
+    assert(
+      typeof resultObj.Entries === 'object' && resultObj.Entries !== null,
+      'Entries should be an object',
+    )
 
     /** @type {Record<string, unknown>} */
     const entries = /** @type {Record<string, unknown>} */ (resultObj.Entries)
@@ -1021,16 +1081,14 @@ describe('fetchCid', () => {
     assert(typeof entriesCid === 'string', 'Entries CID should be a string')
 
     /** @type {unknown} */
-    result = await pRetry(
-      () =>
-        (
-          fetchCid(curioProviderUrl, entriesCid)
-        )
-    )
+    result = await pRetry(() => fetchCid(curioProviderUrl, entriesCid))
     /** @type {{ Entries: unknown[]; }} */
     const entriesChunk = /** @type {{ Entries: unknown[]; }} */ (result)
     const payloadCid = processEntries(entriesCid, entriesChunk)
     console.log(payloadCid)
-    assert.deepStrictEqual(payloadCid, 'bafkreiefrclz7c6w57yl4u7uiq4kvht4z7pits5jpcj3cajbvowik3rvhm')
+    assert.deepStrictEqual(
+      payloadCid,
+      'bafkreiefrclz7c6w57yl4u7uiq4kvht4z7pits5jpcj3cajbvowik3rvhm',
+    )
   })
 })

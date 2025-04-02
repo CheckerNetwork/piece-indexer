@@ -8,9 +8,7 @@ import { runIpniSync } from '../lib/ipni-watcher.js'
 
 /** @import { ProviderToInfoMap } from '../lib/typings.d.ts' */
 
-const {
-  REDIS_URL: redisUrl = 'redis://localhost:6379'
-} = process.env
+const { REDIS_URL: redisUrl = 'redis://localhost:6379' } = process.env
 
 const redisUrlParsed = new URL(redisUrl)
 const redis = new Redis({
@@ -19,7 +17,7 @@ const redis = new Redis({
   username: redisUrlParsed.username,
   password: redisUrlParsed.password,
   lazyConnect: true, // call connect() explicitly so that we can exit on connection error
-  family: 6 // required for upstash
+  family: 6, // required for upstash
 })
 
 await redis.connect()
@@ -50,9 +48,7 @@ for await (const providerInfos of runIpniSync({ minSyncIntervalInMs: 60_000 })) 
       repository,
       providerId,
       getProviderInfo,
-      minStepIntervalInMs: 100
-    }).finally(
-      () => providerIdsBeingWalked.delete(providerId)
-    )
+      minStepIntervalInMs: 100,
+    }).finally(() => providerIdsBeingWalked.delete(providerId))
   }
 }
