@@ -7,7 +7,7 @@ import Fastify from 'fastify'
  * @param {string|boolean} args.domain
  * @param {Fastify.FastifyLoggerOptions} args.logger
  */
-export function createApp ({ repository, domain, logger }) {
+export function createApp({ repository, domain, logger }) {
   const app = Fastify({ logger })
   Sentry.setupFastifyErrorHandler(app)
 
@@ -41,7 +41,7 @@ export function createApp ({ repository, domain, logger }) {
     if (!walkerState) {
       return reply.send({
         providerId,
-        ingestionStatus: 'Unknown provider ID'
+        ingestionStatus: 'Unknown provider ID',
       })
     }
 
@@ -54,7 +54,7 @@ export function createApp ({ repository, domain, logger }) {
       lastHeadWalkedFrom: walkerState.lastHead ?? walkerState.head,
       adsMissingPieceCID: walkerState.adsMissingPieceCID ?? 0,
       entriesNotRetrievable: walkerState.entriesNotRetrievable ?? 0,
-      piecesIndexed: await repository.countPiecesIndexed(providerId)
+      piecesIndexed: await repository.countPiecesIndexed(providerId),
     })
   })
 

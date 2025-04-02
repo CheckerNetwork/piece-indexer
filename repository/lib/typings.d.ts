@@ -26,15 +26,14 @@ lastAdCID --> [ ] -\
              (null)
  */
 export interface WalkerState {
-  head?: string;
-  tail?: string;
-  lastHead?: string;
-  status: string;
-  entriesNotRetrievable?: number;
-  adsMissingPieceCID?: number;
+  head?: string
+  tail?: string
+  lastHead?: string
+  status: string
+  entriesNotRetrievable?: number
+  adsMissingPieceCID?: number
 }
 
 export type ProviderToWalkerStateMap = Map<string, WalkerState>
 
-export type PiecePayloadCIDs = string[];
-
+export type PiecePayloadCIDs = string[]

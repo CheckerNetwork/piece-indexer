@@ -13,7 +13,7 @@ const debug = createDebug('spark-piece-indexer:ipni-watcher')
  * @param {number} args.minSyncIntervalInMs
  * @param {AbortSignal} [args.signal]
  */
-export async function * runIpniSync ({ minSyncIntervalInMs, signal }) {
+export async function* runIpniSync({ minSyncIntervalInMs, signal }) {
   while (!signal?.aborted) {
     const started = Date.now()
     try {
@@ -22,7 +22,8 @@ export async function * runIpniSync ({ minSyncIntervalInMs, signal }) {
       console.log(
         'Found %s providers, %s support(s) HTTP(s)',
         providers.size,
-        Array.from(providers.values()).filter(p => p.providerAddress.match(/^https?:\/\//)).length
+        Array.from(providers.values()).filter((p) => p.providerAddress.match(/^https?:\/\//))
+          .length,
       )
       yield providers
     } catch (err) {
@@ -40,7 +41,7 @@ export async function * runIpniSync ({ minSyncIntervalInMs, signal }) {
 /**
  * @returns {Promise<ProviderToInfoMap>}
  */
-export async function getProvidersWithMetadata () {
+export async function getProvidersWithMetadata() {
   const res = await fetch('https://cid.contact/providers')
   assertOkResponse(res)
 
@@ -59,10 +60,10 @@ export async function getProvidersWithMetadata () {
     },
     // Ignored: ExtendedProviders, FrozenAt
    * }[]}
-   */(await res.json())
+   */ (await res.json())
 
   /** @type {[string, ProviderInfo][]} */
-  const entries = providers.map(p => {
+  const entries = providers.map((p) => {
     const providerId = p.Publisher.ID
     const lastAdvertisementCID = p.LastAdvertisement['/']
 

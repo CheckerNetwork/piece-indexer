@@ -24,10 +24,8 @@ describe('HTTP request handler', () => {
       repository,
       domain: false,
       logger: {
-        level: process.env.DEBUG === '*' || process.env.DEBUG?.includes('test')
-          ? 'debug'
-          : 'error'
-      }
+        level: process.env.DEBUG === '*' || process.env.DEBUG?.includes('test') ? 'debug' : 'error',
+      },
     })
     baseUrl = await app.listen()
   })
@@ -48,20 +46,35 @@ describe('HTTP request handler', () => {
 
   describe('GET /samples/{providerId}/{pieceCid}', () => {
     it('returns the first payload block from the index', async () => {
-      await repository.addPiecePayloadBlocks('provider-id', 'piece-cid', 'payload-cid-1', 'payload-cid-2')
-      await repository.addPiecePayloadBlocks('provider-id2', 'piece-cid', 'payload-cid-1', 'payload-cid-2')
-      await repository.addPiecePayloadBlocks('provider-id', 'piece-cid2', 'payload-cid-1', 'payload-cid-2')
+      await repository.addPiecePayloadBlocks(
+        'provider-id',
+        'piece-cid',
+        'payload-cid-1',
+        'payload-cid-2',
+      )
+      await repository.addPiecePayloadBlocks(
+        'provider-id2',
+        'piece-cid',
+        'payload-cid-1',
+        'payload-cid-2',
+      )
+      await repository.addPiecePayloadBlocks(
+        'provider-id',
+        'piece-cid2',
+        'payload-cid-1',
+        'payload-cid-2',
+      )
 
       const res = await fetch(new URL('/sample/provider-id/piece-cid', baseUrl))
       await assertResponseStatus(res, 200)
       const body = await res.json()
 
       assert.deepStrictEqual(body, {
-        samples: ['payload-cid-1']
+        samples: ['payload-cid-1'],
       })
       assert.strictEqual(
         res.headers.get('cache-control'),
-        `public, max-age=${24 * 3600}, immutable`
+        `public, max-age=${24 * 3600}, immutable`,
       )
     })
 
@@ -73,12 +86,9 @@ describe('HTTP request handler', () => {
       const body = await res.json()
 
       assert.deepStrictEqual(body, {
-        error: 'PROVIDER_OR_PIECE_NOT_FOUND'
+        error: 'PROVIDER_OR_PIECE_NOT_FOUND',
       })
-      assert.strictEqual(
-        res.headers.get('cache-control'),
-        `public, max-age=${60}`
-      )
+      assert.strictEqual(res.headers.get('cache-control'), `public, max-age=${60}`)
     })
 
     it('returns error when provider piece is not found', async () => {
@@ -89,12 +99,9 @@ describe('HTTP request handler', () => {
       const body = await res.json()
 
       assert.deepStrictEqual(body, {
-        error: 'PROVIDER_OR_PIECE_NOT_FOUND'
+        error: 'PROVIDER_OR_PIECE_NOT_FOUND',
       })
-      assert.strictEqual(
-        res.headers.get('cache-control'),
-        `public, max-age=${60}`
-      )
+      assert.strictEqual(res.headers.get('cache-control'), `public, max-age=${60}`)
     })
   })
 
@@ -115,20 +122,17 @@ describe('HTTP request handler', () => {
         lastHeadWalkedFrom: 'last-head',
         adsMissingPieceCID: 0,
         entriesNotRetrievable: 0,
-        piecesIndexed: 1
+        piecesIndexed: 1,
       })
 
-      assert.strictEqual(
-        res.headers.get('cache-control'),
-        `public, max-age=${60}`
-      )
+      assert.strictEqual(res.headers.get('cache-control'), `public, max-age=${60}`)
     })
 
     it('returns error for an unknown provider', async () => {
       await repository.setWalkerState('provider-id', {
         status: 'walking',
         tail: 'tail',
-        lastHead: 'last-head'
+        lastHead: 'last-head',
       })
       await repository.addPiecePayloadBlocks('provider-id', 'piece-cid', 'bafy1')
 
@@ -138,13 +142,10 @@ describe('HTTP request handler', () => {
 
       assert.deepStrictEqual(body, {
         providerId: 'unknown-provider-id',
-        ingestionStatus: 'Unknown provider ID'
+        ingestionStatus: 'Unknown provider ID',
       })
 
-      assert.strictEqual(
-        res.headers.get('cache-control'),
-        `public, max-age=${60}`
-      )
+      assert.strictEqual(res.headers.get('cache-control'), `public, max-age=${60}`)
     })
 
     it('returns "head" as "lastHead" when the initial walk has not finished yet', async () => {
@@ -161,13 +162,10 @@ describe('HTTP request handler', () => {
         lastHeadWalkedFrom: 'head',
         adsMissingPieceCID: 0,
         entriesNotRetrievable: 0,
-        piecesIndexed: 1
+        piecesIndexed: 1,
       })
 
-      assert.strictEqual(
-        res.headers.get('cache-control'),
-          `public, max-age=${60}`
-      )
+      assert.strictEqual(res.headers.get('cache-control'), `public, max-age=${60}`)
     })
 
     it('returns the number of adsMissingPieceCID and entriesNotRetrievable', async () => {
@@ -175,7 +173,7 @@ describe('HTTP request handler', () => {
         status: 'walking',
         head: 'head',
         entriesNotRetrievable: 10,
-        adsMissingPieceCID: 20
+        adsMissingPieceCID: 20,
       })
 
       const res = await fetch(new URL('/ingestion-status/provider-id', baseUrl))
@@ -188,13 +186,10 @@ describe('HTTP request handler', () => {
         lastHeadWalkedFrom: 'head',
         entriesNotRetrievable: 10,
         adsMissingPieceCID: 20,
-        piecesIndexed: 0
+        piecesIndexed: 0,
       })
 
-      assert.strictEqual(
-        res.headers.get('cache-control'),
-          `public, max-age=${60}`
-      )
+      assert.strictEqual(res.headers.get('cache-control'), `public, max-age=${60}`)
     })
   })
 })

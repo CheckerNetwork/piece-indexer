@@ -30,7 +30,7 @@ describe('data schema for REST API', () => {
       head: 'head',
       tail: 'tail',
       lastHead: 'last head',
-      status: 'status'
+      status: 'status',
     }
 
     await repository.setWalkerState('providerId', state)

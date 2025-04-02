@@ -18,7 +18,5 @@
     "noEmit": true,
     "resolveJsonModule": true
   },
-  "include": [
-    "indexer"
-  ]
+  "include": ["indexer"]
 }

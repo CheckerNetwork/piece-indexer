@@ -22,12 +22,12 @@ const debug = createDebug('spark-piece-indexer:advertisement-walker')
  * @param {number} args.minStepIntervalInMs
  * @param {AbortSignal} [args.signal]
  */
-export async function walkChain ({
+export async function walkChain({
   repository,
   providerId,
   getProviderInfo,
   minStepIntervalInMs,
-  signal
+  signal,
 }) {
   let stepInterval = minStepIntervalInMs
   let walkerState
@@ -45,12 +45,17 @@ export async function walkChain ({
       failed = !!result.failed
     } catch (err) {
       failed = true
-      console.error('Error indexing provider %s (%s):', providerId, providerInfo.providerAddress, err)
+      console.error(
+        'Error indexing provider %s (%s):',
+        providerId,
+        providerInfo.providerAddress,
+        err,
+      )
       Sentry.captureException(err, {
         extra: {
           providerId,
-          providerAddress: providerInfo.providerAddress
-        }
+          providerAddress: providerInfo.providerAddress,
+        },
       })
     }
 
@@ -65,7 +70,12 @@ export async function walkChain ({
 
     const delay = stepInterval - (Date.now() - started)
     if (delay > 0) {
-      debug('Waiting for %sms before the next walk for provider %s (%s)', delay, providerId, providerInfo.providerAddress)
+      debug(
+        'Waiting for %sms before the next walk for provider %s (%s)',
+        delay,
+        providerId,
+        providerInfo.providerAddress,
+      )
       await timers.setTimeout(delay)
     }
   }
@@ -79,19 +89,29 @@ export async function walkChain ({
  * @param {WalkerState} [args.walkerState]
  * @param {number} [args.fetchTimeout]
  */
-export async function walkOneStep ({ repository, providerId, providerInfo, fetchTimeout, walkerState }) {
+export async function walkOneStep({
+  repository,
+  providerId,
+  providerInfo,
+  fetchTimeout,
+  walkerState,
+}) {
   if (!walkerState) {
-    debug('FETCHING walker state from the repository for provider %s (%s)', providerId, providerInfo.providerAddress)
+    debug(
+      'FETCHING walker state from the repository for provider %s (%s)',
+      providerId,
+      providerInfo.providerAddress,
+    )
     walkerState = await repository.getWalkerState(providerId)
   } else {
     debug('REUSING walker state for provider %s (%s)', providerId, providerInfo.providerAddress)
   }
-  const {
-    newState,
-    indexEntry,
-    failed,
-    finished
-  } = await processNextAdvertisement({ providerId, providerInfo, walkerState, fetchTimeout })
+  const { newState, indexEntry, failed, finished } = await processNextAdvertisement({
+    providerId,
+    providerInfo,
+    walkerState,
+    fetchTimeout,
+  })
 
   if (newState) {
     await repository.setWalkerState(providerId, newState)
@@ -110,20 +130,24 @@ export async function walkOneStep ({ repository, providerId, providerInfo, fetch
  * @param {WalkerState | undefined} args.walkerState
  * @param {number} [args.fetchTimeout]
  */
-export async function processNextAdvertisement ({
+export async function processNextAdvertisement({
   providerId,
   providerInfo,
   walkerState,
-  fetchTimeout
+  fetchTimeout,
 }) {
   if (!providerInfo.providerAddress?.match(/^https?:\/\//)) {
-    debug('Skipping provider %s - address is not HTTP(s): %s', providerId, providerInfo.providerAddress)
+    debug(
+      'Skipping provider %s - address is not HTTP(s): %s',
+      providerId,
+      providerInfo.providerAddress,
+    )
     return {
       /** @type {WalkerState} */
       newState: {
-        status: `Index provider advertises over an unsupported protocol: ${providerInfo.providerAddress}`
+        status: `Index provider advertises over an unsupported protocol: ${providerInfo.providerAddress}`,
       },
-      finished: true
+      finished: true,
     }
   }
 
@@ -133,18 +157,28 @@ export async function processNextAdvertisement ({
   let state
 
   if (walkerState?.tail) {
-    debug('Next step for provider %s (%s): %s', providerId, providerInfo.providerAddress, walkerState.tail)
+    debug(
+      'Next step for provider %s (%s): %s',
+      providerId,
+      providerInfo.providerAddress,
+      walkerState.tail,
+    )
     state = { ...walkerState }
   } else if (nextHead === walkerState?.lastHead) {
     debug('No new advertisements from provider %s (%s)', providerId, providerInfo.providerAddress)
     return { finished: true }
   } else {
-    debug('New walk for provider %s (%s): %s', providerId, providerInfo.providerAddress, providerInfo.lastAdvertisementCID)
+    debug(
+      'New walk for provider %s (%s): %s',
+      providerId,
+      providerInfo.providerAddress,
+      providerInfo.lastAdvertisementCID,
+    )
     state = {
       head: nextHead,
       tail: nextHead,
       lastHead: walkerState?.lastHead,
-      status: 'placeholder'
+      status: 'placeholder',
     }
   }
 
@@ -155,7 +189,7 @@ export async function processNextAdvertisement ({
     const { previousAdvertisementCid, entry, error } = await fetchAdvertisedPayload(
       providerInfo.providerAddress,
       state.tail,
-      { fetchTimeout }
+      { fetchTimeout },
     )
 
     if (!previousAdvertisementCid || previousAdvertisementCid === state.lastHead) {
@@ -181,7 +215,7 @@ export async function processNextAdvertisement ({
     return {
       newState: state,
       indexEntry,
-      finished
+      finished,
     }
   } catch (err) {
     const errorDescription = describeFetchError(err, providerInfo.providerAddress)
@@ -191,12 +225,12 @@ export async function processNextAdvertisement ({
       providerId,
       providerInfo.providerAddress,
       state.tail,
-      errorDescription ?? err
+      errorDescription ?? err,
     )
     state.status = `Error processing ${state.tail}: ${errorDescription ?? 'internal error'}`
     return {
       newState: state,
-      failed: true
+      failed: true,
     }
   }
 }
@@ -206,7 +240,7 @@ export async function processNextAdvertisement ({
  * @param {string} providerAddress
  * @returns {string | undefined}
  */
-function describeFetchError (err, providerAddress) {
+function describeFetchError(err, providerAddress) {
   if (!(err instanceof Error)) return undefined
 
   let reason
@@ -221,9 +255,9 @@ function describeFetchError (err, providerAddress) {
     reason = 'operation timed out'
   } else if (
     err.name === 'TypeError' &&
-      err.message === 'fetch failed' &&
-      err.cause &&
-      err.cause instanceof Error
+    err.message === 'fetch failed' &&
+    err.cause &&
+    err.cause instanceof Error
   ) {
     reason = err.cause.message
   }
@@ -240,9 +274,12 @@ function describeFetchError (err, providerAddress) {
  * @param {object} [options]
  * @param {number} [options.fetchTimeout]
  */
-export async function fetchAdvertisedPayload (providerAddress, advertisementCid, { fetchTimeout } = {}) {
-  const advertisement =
-    /** @type {{
+export async function fetchAdvertisedPayload(
+  providerAddress,
+  advertisementCid,
+  { fetchTimeout } = {},
+) {
+  const advertisement = /** @type {{
       Addresses: string[],
       ContextID: { '/': { bytes: string } },
       Entries: { '/': string },
@@ -255,9 +292,7 @@ export async function fetchAdvertisedPayload (providerAddress, advertisementCid,
           bytes: string
         }
       }
-     }} */(
-      await pRetry(() => fetchCid(providerAddress, advertisementCid, { fetchTimeout }))
-    )
+     }} */ (await pRetry(() => fetchCid(providerAddress, advertisementCid, { fetchTimeout })))
   const previousAdvertisementCid = advertisement.PreviousID?.['/']
   debug('advertisement %s %j', advertisementCid, advertisement)
 
@@ -278,10 +313,15 @@ export async function fetchAdvertisedPayload (providerAddress, advertisementCid,
   }
 
   if (!pieceCid) {
-    debug('advertisement %s has no PieceCID in ContextId: %j or metadata: %j', advertisementCid, advertisement.ContextID, meta?.deal)
+    debug(
+      'advertisement %s has no PieceCID in ContextId: %j or metadata: %j',
+      advertisementCid,
+      advertisement.ContextID,
+      meta?.deal,
+    )
     return {
-      error: /** @type {const} */('MISSING_PIECE_CID'),
-      previousAdvertisementCid
+      error: /** @type {const} */ ('MISSING_PIECE_CID'),
+      previousAdvertisementCid,
     }
   }
 
@@ -291,28 +331,21 @@ export async function fetchAdvertisedPayload (providerAddress, advertisementCid,
       () =>
         /** @type {Promise<{
           Entries: { '/' :  { bytes: string } }[]
-        }>} */(
-          fetchCid(providerAddress, entriesCid, { fetchTimeout })
-        ),
+        }>} */ (fetchCid(providerAddress, entriesCid, { fetchTimeout })),
       {
         shouldRetry: (err) =>
-          err && 'statusCode' in err && typeof err.statusCode === 'number' && err.statusCode >= 500
-      }
+          err && 'statusCode' in err && typeof err.statusCode === 'number' && err.statusCode >= 500,
+      },
     )
   } catch (err) {
     // We are not able to fetch the advertised entries. Skip this advertisement so that we can
     // continue the ingestion of other advertisements.
     const errorDescription = describeFetchError(err, providerAddress)
-    const log = /** @type {any} */(err)?.statusCode === 404 ? debug : console.warn
-    log(
-      'Cannot fetch ad %s entries %s: %s',
-      advertisementCid,
-      entriesCid,
-      errorDescription ?? err
-    )
+    const log = /** @type {any} */ (err)?.statusCode === 404 ? debug : console.warn
+    log('Cannot fetch ad %s entries %s: %s', advertisementCid, entriesCid, errorDescription ?? err)
     return {
-      error: /** @type {const} */('ENTRIES_NOT_RETRIEVABLE'),
-      previousAdvertisementCid
+      error: /** @type {const} */ ('ENTRIES_NOT_RETRIEVABLE'),
+      previousAdvertisementCid,
     }
   }
 
@@ -322,14 +355,14 @@ export async function fetchAdvertisedPayload (providerAddress, advertisementCid,
   } catch (err) {
     debug('Error processing entries: %s', err)
     return {
-      error: /** @type {const} */('PAYLOAD_CID_NOT_EXTRACTABLE'),
-      previousAdvertisementCid
+      error: /** @type {const} */ ('PAYLOAD_CID_NOT_EXTRACTABLE'),
+      previousAdvertisementCid,
     }
   }
 
   return {
     previousAdvertisementCid,
-    entry: { pieceCid, payloadCid }
+    entry: { pieceCid, payloadCid },
   }
 }
 
@@ -341,7 +374,7 @@ export async function fetchAdvertisedPayload (providerAddress, advertisementCid,
  * @param {typeof fetch} [options.fetchFn]
  * @returns {Promise<unknown>}
  */
-export async function fetchCid (providerBaseUrl, cid, { fetchTimeout, fetchFn } = {}) {
+export async function fetchCid(providerBaseUrl, cid, { fetchTimeout, fetchFn } = {}) {
   let url = new URL(providerBaseUrl)
 
   // Check if the URL already has a path
@@ -355,7 +388,9 @@ export async function fetchCid (providerBaseUrl, cid, { fetchTimeout, fetchFn } 
   url = new URL(cid, url)
   debug('Fetching %s', url)
   try {
-    const res = await (fetchFn ?? fetch)(url, { signal: AbortSignal.timeout(fetchTimeout ?? 30_000) })
+    const res = await (fetchFn ?? fetch)(url, {
+      signal: AbortSignal.timeout(fetchTimeout ?? 30_000),
+    })
     debug('Response from %s → %s %o', url, res.status, res.headers)
     await assertOkResponse(res)
 
@@ -369,9 +404,11 @@ export async function fetchCid (providerBaseUrl, cid, { fetchTimeout, fetchFn } 
       case 297: // DAG-JSON
         return await res.json()
 
-      case 113: { // DAG-CBOR
+      case 113: {
+        // DAG-CBOR
         const buffer = await res.arrayBuffer()
-        return cbor.decode(new Uint8Array(buffer)) }
+        return cbor.decode(new Uint8Array(buffer))
+      }
 
       default:
         throw new Error(`Unknown codec ${codec} for CID ${cid}`)
@@ -388,15 +425,16 @@ export async function fetchCid (providerBaseUrl, cid, { fetchTimeout, fetchFn } 
 /**
  * @param {string} meta
  */
-export function parseMetadata (meta) {
+export function parseMetadata(meta) {
   const bytes = Buffer.from(meta, 'base64')
   const [protocolCode, nextOffset] = varint.decode(bytes)
 
-  const protocol = {
-    0x900: 'bitswap',
-    0x910: 'graphsync',
-    0x0920: 'http'
-  }[protocolCode] ?? '0x' + protocolCode.toString(16)
+  const protocol =
+    {
+      0x900: 'bitswap',
+      0x910: 'graphsync',
+      0x0920: 'http',
+    }[protocolCode] ?? '0x' + protocolCode.toString(16)
 
   if (protocol === 'graphsync') {
     // console.log(bytes.subarray(nextOffset).toString('hex'))
@@ -420,7 +458,7 @@ export function parseMetadata (meta) {
  * @param {function} [options.logDebugMessage] - Function to log debug messages
  * @returns {{pieceCid: string;pieceSize: number}|null} - Object containing pieceCid and pieceSize if successful, null otherwise
  */
-export function extractPieceInfoFromContextID (contextID, { logDebugMessage } = {}) {
+export function extractPieceInfoFromContextID(contextID, { logDebugMessage } = {}) {
   logDebugMessage ??= debug
   // Check if ContextID exists and has the expected structure
   if (!contextID || !contextID['/'] || !contextID['/'].bytes) {
@@ -437,35 +475,52 @@ export function extractPieceInfoFromContextID (contextID, { logDebugMessage } = 
 
     // Validate the decoded data with specific error messages
     if (!Array.isArray(decoded)) {
-      logDebugMessage('ContextID validation failed for %s: decoded value is not an array, got %s',
-        contextID, typeof decoded)
+      logDebugMessage(
+        'ContextID validation failed for %s: decoded value is not an array, got %s',
+        contextID,
+        typeof decoded,
+      )
       return null
     }
 
     if (decoded.length !== 2) {
-      logDebugMessage('ContextID validation failed for %s: expected array with 2 items, got %d items',
-        contextID, decoded.length)
+      logDebugMessage(
+        'ContextID validation failed for %s: expected array with 2 items, got %d items',
+        contextID,
+        decoded.length,
+      )
       return null
     }
     const [pieceSize, pieceCid] = decoded
     if (typeof pieceSize !== 'number') {
-      logDebugMessage('ContextID validation failed for %s: pieceSize is not a number, got %s',
-        contextID, typeof decoded[0])
+      logDebugMessage(
+        'ContextID validation failed for %s: pieceSize is not a number, got %s',
+        contextID,
+        typeof decoded[0],
+      )
       return null
     }
     if (!(typeof pieceCid === 'object')) {
-      logDebugMessage('ContextID validation failed for %s: pieceCID is not an object, got %s',
-        contextID, typeof pieceCid)
+      logDebugMessage(
+        'ContextID validation failed for %s: pieceCID is not an object, got %s',
+        contextID,
+        typeof pieceCid,
+      )
       return null
     }
     if (pieceCid === null || pieceCid === undefined) {
-      logDebugMessage('ContextID validation failed for %s: pieceCID is null or undefined',
-        contextID)
+      logDebugMessage(
+        'ContextID validation failed for %s: pieceCID is null or undefined',
+        contextID,
+      )
       return null
     }
     if (!(pieceCid?.constructor?.name === 'CID')) {
-      logDebugMessage('ContextID validation failed for %s: pieceCID is not a CID, got %s',
-        contextID, pieceCid?.constructor?.name)
+      logDebugMessage(
+        'ContextID validation failed for %s: pieceCID is not a CID, got %s',
+        contextID,
+        pieceCid?.constructor?.name,
+      )
       return null
     }
 
@@ -481,7 +536,7 @@ export function extractPieceInfoFromContextID (contextID, { logDebugMessage } = 
  * @param {{Entries: Array<unknown>}} entriesChunk - The decoded entries
  * @returns {string} The payload CID
  */
-export function processEntries (entriesCid, entriesChunk) {
+export function processEntries(entriesCid, entriesChunk) {
   if (!entriesChunk.Entries || !entriesChunk.Entries.length) {
     throw new Error(`No entries found in the response for ${entriesCid}`)
   }
@@ -509,13 +564,15 @@ export function processEntries (entriesCid, entriesChunk) {
         throw new Error('DAG-JSON entry\'s ["/"]["bytes"] property must be a string')
       }
       entryBytes = Buffer.from(entryHash, 'base64')
-      break }
+      break
+    }
     case 113: {
       // DAG-CBOR
       // For DAG-CBOR format, the entry is already a Uint8Array with the multihash
       entryBytes = entriesChunk.Entries[0]
       assert(entryBytes instanceof Uint8Array, 'DAG-CBOR entry must be a Uint8Array')
-      break }
+      break
+    }
     default:
       throw new Error(`Unsupported codec ${codec}`)
   }
