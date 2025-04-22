@@ -28,10 +28,10 @@
   "devDependencies": {
     "@checkernetwork/prettier-config": "^1.0.0",
     "@types/debug": "^4.1.12",
-    "@types/node": "^22.13.17",
+    "@types/node": "^22.14.1",
     "eslint": "^9.23.0",
     "neostandard": "^0.12.1",
     "prettier": "^3.5.3",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.3"
   }
 }
