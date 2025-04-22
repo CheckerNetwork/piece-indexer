@@ -1,7 +1,16 @@
 {
   "name": "@filecoin-station/piece-indexer-monorepo",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
+  "homepage": "https://github.com/filecoin-station/piece-indexer#readme",
+  "bugs": {
+    "url": "https://github.com/filecoin-station/piece-indexer/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/filecoin-station/piece-indexer.git"
+  },
+  "license": "(Apache-2.0 AND MIT)",
   "type": "module",
   "workspaces": [
     "api",
@@ -11,20 +20,13 @@
   "scripts": {
     "lint": "eslint && prettier --check .",
     "lint:fix": "eslint --fix && prettier --write .",
+    "test": "npm run lint && npm run test:types && npm run test:unit",
     "test:types": "tsc -p .",
-    "test:unit": "npm test --workspaces --if-present",
-    "test": "npm run lint && npm run test:types && npm run test:unit"
+    "test:unit": "npm test --workspaces --if-present"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+ssh://git@github.com/filecoin-station/piece-indexer.git"
-  },
-  "license": "(Apache-2.0 AND MIT)",
-  "bugs": {
-    "url": "https://github.com/filecoin-station/piece-indexer/issues"
-  },
-  "homepage": "https://github.com/filecoin-station/piece-indexer#readme",
+  "prettier": "@checkernetwork/prettier-config",
   "devDependencies": {
+    "@checkernetwork/prettier-config": "^1.0.0",
     "@types/debug": "^4.1.12",
     "@types/node": "^22.13.17",
     "eslint": "^9.23.0",

@@ -6,7 +6,7 @@ import { multiaddrToHttpUrl } from './vendored/multiaddr.js'
 
 const debug = createDebug('spark-piece-indexer:ipni-watcher')
 
-/** @import { ProviderToInfoMap, ProviderInfo } from './typings.js' */
+/** @import {ProviderToInfoMap, ProviderInfo} from './typings.js' */
 
 /**
  * @param {object} args
@@ -22,8 +22,9 @@ export async function* runIpniSync({ minSyncIntervalInMs, signal }) {
       console.log(
         'Found %s providers, %s support(s) HTTP(s)',
         providers.size,
-        Array.from(providers.values()).filter((p) => p.providerAddress.match(/^https?:\/\//))
-          .length,
+        Array.from(providers.values()).filter((p) =>
+          p.providerAddress.match(/^https?:\/\//),
+        ).length,
       )
       yield providers
     } catch (err) {
@@ -38,27 +39,26 @@ export async function* runIpniSync({ minSyncIntervalInMs, signal }) {
   }
 }
 
-/**
- * @returns {Promise<ProviderToInfoMap>}
- */
+/** @returns {Promise<ProviderToInfoMap>} */
 export async function getProvidersWithMetadata() {
   const res = await fetch('https://cid.contact/providers')
   assertOkResponse(res)
 
-  const providers = /** @type {{
-    AddrInfo: {
-      ID: string;
-      Addrs: string[];
-    },
-    LastAdvertisement: {
-      "/": string;
-    },
-    LastAdvertisementTime: string;
-    Publisher: {
-      ID: string;
-      Addrs: string[];
-    },
-    // Ignored: ExtendedProviders, FrozenAt
+  const providers = /**
+   * @type {{
+   *   AddrInfo: {
+   *     ID: string
+   *     Addrs: string[]
+   *   }
+   *   LastAdvertisement: {
+   *     '/': string
+   *   }
+   *   LastAdvertisementTime: string
+   *   Publisher: {
+   *     ID: string
+   *     Addrs: string[]
+   *   }
+   *   // Ignored: ExtendedProviders, FrozenAt
    * }[]}
    */ (await res.json())
 
@@ -72,7 +72,11 @@ export async function getProvidersWithMetadata() {
     try {
       providerAddress = multiaddrToHttpUrl(providerAddress)
     } catch (err) {
-      debug('Cannot convert address to HTTP(s) URL (provider: %s): %s', providerId, err)
+      debug(
+        'Cannot convert address to HTTP(s) URL (provider: %s): %s',
+        providerId,
+        err,
+      )
     }
 
     return [providerId, { providerAddress, lastAdvertisementCID }]

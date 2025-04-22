@@ -1,11 +1,9 @@
-/** @import { WalkerState } from './typings.d.ts' */
+/** @import {WalkerState} from './typings.d.ts' */
 
 export class RedisRepository {
   #redis
 
-  /**
-   * @param {import('ioredis').Redis} redis
-   */
+  /** @param {import('ioredis').Redis} redis */
   constructor(redis) {
     this.#redis = redis
   }
@@ -34,7 +32,10 @@ export class RedisRepository {
    * @param {string[]} payloadCids
    */
   async addPiecePayloadBlocks(providerId, pieceCid, ...payloadCids) {
-    await this.#redis.sadd(`piece-payload:${providerId}:${pieceCid}`, ...payloadCids)
+    await this.#redis.sadd(
+      `piece-payload:${providerId}:${pieceCid}`,
+      ...payloadCids,
+    )
   }
 
   /**
@@ -43,13 +44,13 @@ export class RedisRepository {
    * @returns {Promise<string[]>}
    */
   async getPiecePayloadBlocks(providerId, pieceCid) {
-    const payloadCids = await this.#redis.smembers(`piece-payload:${providerId}:${pieceCid}`)
+    const payloadCids = await this.#redis.smembers(
+      `piece-payload:${providerId}:${pieceCid}`,
+    )
     return payloadCids
   }
 
-  /**
-   * @param {string} providerId
-   */
+  /** @param {string} providerId */
   async countPiecesIndexed(providerId) {
     const keyStream = this.#redis.scanStream({
       match: `piece-payload:${providerId}:*`,

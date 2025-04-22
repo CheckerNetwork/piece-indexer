@@ -4,7 +4,7 @@ import Fastify from 'fastify'
 /**
  * @param {object} args
  * @param {Repository} args.repository
- * @param {string|boolean} args.domain
+ * @param {string | boolean} args.domain
  * @param {Fastify.FastifyLoggerOptions} args.logger
  */
 export function createApp({ repository, domain, logger }) {
@@ -21,11 +21,17 @@ export function createApp({ repository, domain, logger }) {
 
   app.get('/sample/:providerId/:pieceCid', async (request, reply) => {
     const { providerId, pieceCid } = request.params
-    const payloadCids = await repository.getPiecePayloadBlocks(providerId, pieceCid)
+    const payloadCids = await repository.getPiecePayloadBlocks(
+      providerId,
+      pieceCid,
+    )
     const body = {}
     if (payloadCids.length) {
       body.samples = payloadCids.slice(0, 1)
-      reply.header('cache-control', `public, max-age=${24 * 3600 /* 24 hours */}, immutable`)
+      reply.header(
+        'cache-control',
+        `public, max-age=${24 * 3600 /* 24 hours */}, immutable`,
+      )
     } else {
       body.error = 'PROVIDER_OR_PIECE_NOT_FOUND'
       reply.header('cache-control', `public, max-age=${60 /* 1min */}`)

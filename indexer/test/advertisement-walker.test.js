@@ -23,7 +23,7 @@ import { CID } from 'multiformats/cid'
 import * as crypto from 'node:crypto'
 import * as multihash from 'multiformats/hashes/digest'
 import { multiaddrToHttpUrl } from '../lib/vendored/multiaddr.js'
-/** @import { ProviderInfo, WalkerState } from '../lib/typings.js' */
+/** @import {ProviderInfo, WalkerState} from '../lib/typings.js' */
 
 // TODO(bajtos) We may need to replace this with a mock index provider
 const providerId = '12D3KooWHKeaNCnYByQUMS2n5PAZ1KZ9xKXqsb4bhpxVJ6bBJg5V'
@@ -39,8 +39,10 @@ const providerAddress = 'http://f010479.twinquasar.io:3104'
 //  (...)
 const knownAdvertisement = {
   adCid: 'baguqeerarbmakqcnzzuhki25xs357xyin4ieqxvumrp5cy7s44v7tzwwmg3q',
-  previousAdCid: 'baguqeerau2rz67nvzcaotgowm2olalanx3eynr2asbjwdkaq3y5umqvdi2ea',
-  previousPreviousAdCid: 'baguqeeraa5mjufqdwuwrrrqboctnn3vhdlq63rj3hce2igpzbmae7sazkfea',
+  previousAdCid:
+    'baguqeerau2rz67nvzcaotgowm2olalanx3eynr2asbjwdkaq3y5umqvdi2ea',
+  previousPreviousAdCid:
+    'baguqeeraa5mjufqdwuwrrrqboctnn3vhdlq63rj3hce2igpzbmae7sazkfea',
   payloadCid: 'bafkreigrnnl64xuevvkhknbhrcqzbdvvmqnchp7ae2a4ulninsjoc5svoq',
   pieceCid: 'baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja',
 }
@@ -61,7 +63,8 @@ describe('processNextAdvertisement', () => {
     assert.deepStrictEqual(result, {
       finished: true,
       newState: {
-        status: 'Index provider advertises over an unsupported protocol: /ip4/127.0.0.1/tcp/80',
+        status:
+          'Index provider advertises over an unsupported protocol: /ip4/127.0.0.1/tcp/80',
       },
     })
   })
@@ -94,7 +97,11 @@ describe('processNextAdvertisement', () => {
       lastAdvertisementCID: knownAdvertisement.adCid,
     }
     const walkerState = undefined
-    const result = await processNextAdvertisement({ providerId, providerInfo, walkerState })
+    const result = await processNextAdvertisement({
+      providerId,
+      providerInfo,
+      walkerState,
+    })
     assert.deepStrictEqual(result, {
       /** @type {WalkerState} */
       newState: {
@@ -126,7 +133,11 @@ describe('processNextAdvertisement', () => {
       status: 'some-status',
     }
 
-    const result = await processNextAdvertisement({ providerId, providerInfo, walkerState })
+    const result = await processNextAdvertisement({
+      providerId,
+      providerInfo,
+      walkerState,
+    })
     assert.deepStrictEqual(result, {
       finished: true,
     })
@@ -424,11 +435,13 @@ describe('processNextAdvertisement', () => {
   })
   it('correctly processes Curio advertisement with DAG-CBOR entries', async function () {
     // Real Curio provider details
-    const curioProviderId = '12D3KooWJ91c6xQshrNe7QAXPFAaeRrHWq2UrgXGPf8UmMZMwyZ5'
+    const curioProviderId =
+      '12D3KooWJ91c6xQshrNe7QAXPFAaeRrHWq2UrgXGPf8UmMZMwyZ5'
     const curioProviderAddress = multiaddrToHttpUrl(
       '/dns/f03303347-market.duckdns.org/https/http-path/%2Fipni-provider%2F12D3KooWJ91c6xQshrNe7QAXPFAaeRrHWq2UrgXGPf8UmMZMwyZ5',
     )
-    const advertisementCid = 'baguqeerakqnjugtecgj5hhfmnh46pthk5k3vy6vf4bw3vpmwmudknlatun5a'
+    const advertisementCid =
+      'baguqeerakqnjugtecgj5hhfmnh46pthk5k3vy6vf4bw3vpmwmudknlatun5a'
 
     const providerInfo = {
       providerAddress: curioProviderAddress,
@@ -474,7 +487,10 @@ describe('processNextAdvertisement', () => {
 
 describe('fetchAdvertisedPayload', () => {
   it('returns previousAdvertisementCid, pieceCid and payloadCid for Graphsync retrievals', async () => {
-    const result = await fetchAdvertisedPayload(providerAddress, knownAdvertisement.adCid)
+    const result = await fetchAdvertisedPayload(
+      providerAddress,
+      knownAdvertisement.adCid,
+    )
     assert.deepStrictEqual(
       result,
       /** @type {AdvertisedPayload} */ ({
@@ -545,7 +561,10 @@ describe('walkOneStep', () => {
       }),
     )
 
-    assert.deepStrictEqual(result.walkerState, { lastHead: undefined, ...newState })
+    assert.deepStrictEqual(result.walkerState, {
+      lastHead: undefined,
+      ...newState,
+    })
 
     const pieceBlocks = await repository.getPiecePayloadBlocks(
       providerId,
@@ -588,7 +607,10 @@ describe('data schema for REST API', () => {
     // }
     // pubkey & signature will be handled by the REST API server,
     // we are only interested in `samples` in this test
-    const samples = await repository.getPiecePayloadBlocks(providerId, knownAdvertisement.pieceCid)
+    const samples = await repository.getPiecePayloadBlocks(
+      providerId,
+      knownAdvertisement.pieceCid,
+    )
     assert.deepStrictEqual(samples, [knownAdvertisement.payloadCid])
   })
 
@@ -628,29 +650,24 @@ describe('data schema for REST API', () => {
 
 describe('extractPieceCidFromContextID', () => {
   const validPieceSize = 34359738368
-  /**
-   * @type {Array<string>}
-   */
+  /** @type {string[]} */
   let debugMessages = []
-  /**
-   * @type {(format: string, ...args: any[]) => void}
-   */
+  /** @type {(format: string, ...args: any[]) => void} */
   const logDebugMessage = (format, ...args) => {
     debugMessages.push(util.format(format, ...args))
   }
 
-  /**
-   * Clear debug messages before each test
-   */
+  /** Clear debug messages before each test */
   const clearDebugMessages = () => {
     debugMessages = []
   }
 
   /**
    * Helper to create valid test data
+   *
    * @param {number} pieceSize - Size of the piece
    * @param {import('multiformats/cid').CID} pieceCid - CID of the piece
-   * @returns {{'/': {bytes: string}}} - Valid context ID object
+   * @returns {{ '/': { bytes: string } }} - Valid context ID object
    */
   const createValidContextID = (pieceSize, pieceCid) => {
     const encoded = cbor.encode([pieceSize, pieceCid])
@@ -663,11 +680,13 @@ describe('extractPieceCidFromContextID', () => {
 
   /**
    * Example of valid contextId provided
-   * @type {{'/': {bytes: string}}}
+   *
+   * @type {{ '/': { bytes: string } }}
    */
   const validContextIdExample = {
     '/': {
-      bytes: 'ghsAAAAIAAAAANgqWCgAAYHiA5IgIFeksuf2VqNvrrRUxrvA+itvJhrDRju06ThagW6ULKw2',
+      bytes:
+        'ghsAAAAIAAAAANgqWCgAAYHiA5IgIFeksuf2VqNvrrRUxrvA+itvJhrDRju06ThagW6ULKw2',
     },
   }
 
@@ -676,28 +695,49 @@ describe('extractPieceCidFromContextID', () => {
   })
 
   it('should return null when contextID is null or undefined', () => {
-    assert.strictEqual(extractPieceInfoFromContextID(null, { logDebugMessage }), null)
-    assert.strictEqual(extractPieceInfoFromContextID(undefined, { logDebugMessage }), null)
-    assert.ok(debugMessages.some((msg) => msg.includes('has no properly formatted ContextID')))
+    assert.strictEqual(
+      extractPieceInfoFromContextID(null, { logDebugMessage }),
+      null,
+    )
+    assert.strictEqual(
+      extractPieceInfoFromContextID(undefined, { logDebugMessage }),
+      null,
+    )
+    assert.ok(
+      debugMessages.some((msg) =>
+        msg.includes('has no properly formatted ContextID'),
+      ),
+    )
   })
 
   it('should return null when contextID is missing the expected structure', () => {
     // We are testing cases that violate the expected type structures
     assert.strictEqual(
-      extractPieceInfoFromContextID(/** @type {any} */ ({}), { logDebugMessage }),
-      null,
-    )
-    assert.strictEqual(
-      extractPieceInfoFromContextID(/** @type {any} */ ({ '/': {} }), { logDebugMessage }),
-      null,
-    )
-    assert.strictEqual(
-      extractPieceInfoFromContextID(/** @type {any} */ ({ wrong: 'structure' }), {
+      extractPieceInfoFromContextID(/** @type {any} */ ({}), {
         logDebugMessage,
       }),
       null,
     )
-    assert.ok(debugMessages.every((msg) => msg.includes('has no properly formatted ContextID')))
+    assert.strictEqual(
+      extractPieceInfoFromContextID(/** @type {any} */ ({ '/': {} }), {
+        logDebugMessage,
+      }),
+      null,
+    )
+    assert.strictEqual(
+      extractPieceInfoFromContextID(
+        /** @type {any} */ ({ wrong: 'structure' }),
+        {
+          logDebugMessage,
+        },
+      ),
+      null,
+    )
+    assert.ok(
+      debugMessages.every((msg) =>
+        msg.includes('has no properly formatted ContextID'),
+      ),
+    )
   })
 
   it('should return null when decoded data is not an array', () => {
@@ -709,13 +749,22 @@ describe('extractPieceCidFromContextID', () => {
       },
     }
 
-    assert.strictEqual(extractPieceInfoFromContextID(contextID, { logDebugMessage }), null)
-    assert.ok(debugMessages.some((msg) => msg.includes('decoded value is not an array')))
+    assert.strictEqual(
+      extractPieceInfoFromContextID(contextID, { logDebugMessage }),
+      null,
+    )
+    assert.ok(
+      debugMessages.some((msg) =>
+        msg.includes('decoded value is not an array'),
+      ),
+    )
   })
 
   it('should return null when decoded array does not have exactly 2 items', () => {
     // Create a mock CID for testing
-    const mockCid = CID.parse('baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja')
+    const mockCid = CID.parse(
+      'baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja',
+    )
 
     // Create contextID with array of wrong length
     const encodedTooFew = cbor.encode([validPieceSize])
@@ -733,14 +782,24 @@ describe('extractPieceCidFromContextID', () => {
       },
     }
 
-    assert.strictEqual(extractPieceInfoFromContextID(contextIDTooFew, { logDebugMessage }), null)
-    assert.strictEqual(extractPieceInfoFromContextID(contextIDTooMany, { logDebugMessage }), null)
-    assert.ok(debugMessages.some((msg) => msg.includes('expected array with 2 items')))
+    assert.strictEqual(
+      extractPieceInfoFromContextID(contextIDTooFew, { logDebugMessage }),
+      null,
+    )
+    assert.strictEqual(
+      extractPieceInfoFromContextID(contextIDTooMany, { logDebugMessage }),
+      null,
+    )
+    assert.ok(
+      debugMessages.some((msg) => msg.includes('expected array with 2 items')),
+    )
   })
 
   it('should return null when pieceSize is not a number', () => {
     // Create a mock CID for testing
-    const mockCid = CID.parse('baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja')
+    const mockCid = CID.parse(
+      'baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja',
+    )
 
     // Create contextID with non-numeric pieceSize
     const encoded = cbor.encode(['not-a-number', mockCid])
@@ -750,8 +809,13 @@ describe('extractPieceCidFromContextID', () => {
       },
     }
 
-    assert.strictEqual(extractPieceInfoFromContextID(contextID, { logDebugMessage }), null)
-    assert.ok(debugMessages.some((msg) => msg.includes('pieceSize is not a number')))
+    assert.strictEqual(
+      extractPieceInfoFromContextID(contextID, { logDebugMessage }),
+      null,
+    )
+    assert.ok(
+      debugMessages.some((msg) => msg.includes('pieceSize is not a number')),
+    )
   })
 
   it('should return null when pieceCid is not an object', () => {
@@ -763,23 +827,35 @@ describe('extractPieceCidFromContextID', () => {
       },
     }
 
-    assert.strictEqual(extractPieceInfoFromContextID(contextID, { logDebugMessage }), null)
-    assert.ok(debugMessages.some((msg) => msg.includes('pieceCID is not an object')))
+    assert.strictEqual(
+      extractPieceInfoFromContextID(contextID, { logDebugMessage }),
+      null,
+    )
+    assert.ok(
+      debugMessages.some((msg) => msg.includes('pieceCID is not an object')),
+    )
   })
 
   it('should return null when pieceCid is null', () => {
     // Create contextIDs with null/undefined pieceCid
     const encodedNull = cbor.encode([validPieceSize, null])
 
-    /** @type {{'/': {bytes: string}}} */
+    /** @type {{ '/': { bytes: string } }} */
     const contextIDNull = {
       '/': {
         bytes: Buffer.from(encodedNull).toString('base64'),
       },
     }
 
-    assert.strictEqual(extractPieceInfoFromContextID(contextIDNull, { logDebugMessage }), null)
-    assert.ok(debugMessages.some((msg) => msg.includes('pieceCID is null or undefined')))
+    assert.strictEqual(
+      extractPieceInfoFromContextID(contextIDNull, { logDebugMessage }),
+      null,
+    )
+    assert.ok(
+      debugMessages.some((msg) =>
+        msg.includes('pieceCID is null or undefined'),
+      ),
+    )
   })
 
   it('should return null when pieceCid is not a CID object', () => {
@@ -787,36 +863,50 @@ describe('extractPieceCidFromContextID', () => {
     const notACid = { not: 'a-cid' }
     // Make sure it's recognized as a regular object
     const encoded = cbor.encode([validPieceSize, notACid])
-    /** @type {{'/': {bytes: string}}} */
+    /** @type {{ '/': { bytes: string } }} */
     const contextID = {
       '/': {
         bytes: Buffer.from(encoded).toString('base64'),
       },
     }
 
-    assert.strictEqual(extractPieceInfoFromContextID(contextID, { logDebugMessage }), null)
-    assert.ok(debugMessages.some((msg) => msg.includes('pieceCID is not a CID')))
+    assert.strictEqual(
+      extractPieceInfoFromContextID(contextID, { logDebugMessage }),
+      null,
+    )
+    assert.ok(
+      debugMessages.some((msg) => msg.includes('pieceCID is not a CID')),
+    )
   })
 
   it('should handle CBOR decoding errors', () => {
     // Create contextID with invalid CBOR data
-    /** @type {{'/': {bytes: string}}} */
+    /** @type {{ '/': { bytes: string } }} */
     const contextID = {
       '/': {
         bytes: 'ghsA'.concat('invalid-cbor'),
       },
     }
 
-    assert.strictEqual(extractPieceInfoFromContextID(contextID, { logDebugMessage }), null)
-    assert.ok(debugMessages.some((msg) => msg.includes('Failed to decode ContextID')))
+    assert.strictEqual(
+      extractPieceInfoFromContextID(contextID, { logDebugMessage }),
+      null,
+    )
+    assert.ok(
+      debugMessages.some((msg) => msg.includes('Failed to decode ContextID')),
+    )
   })
 
   it('should successfully extract pieceCid and pieceSize from valid input', () => {
     // Create a mock CID for testing
-    const mockCid = CID.parse('baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja')
+    const mockCid = CID.parse(
+      'baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja',
+    )
 
     const validContextID = createValidContextID(validPieceSize, mockCid)
-    const result = extractPieceInfoFromContextID(validContextID, { logDebugMessage })
+    const result = extractPieceInfoFromContextID(validContextID, {
+      logDebugMessage,
+    })
 
     assert.ok(result !== null)
     assert.strictEqual(result.pieceSize, validPieceSize)
@@ -830,12 +920,26 @@ describe('extractPieceCidFromContextID', () => {
   })
 
   it('should process the provided valid context example correctly', () => {
-    const result = extractPieceInfoFromContextID(validContextIdExample, { logDebugMessage })
+    const result = extractPieceInfoFromContextID(validContextIdExample, {
+      logDebugMessage,
+    })
 
-    assert.notStrictEqual(result, null, 'Should not return null for provided valid context example')
+    assert.notStrictEqual(
+      result,
+      null,
+      'Should not return null for provided valid context example',
+    )
     assert.ok(result !== null)
-    assert.strictEqual(typeof result.pieceSize, 'number', 'Should extract a numeric pieceSize')
-    assert.strictEqual(result.pieceCid.constructor.name, 'CID', 'Should extract a CID object')
+    assert.strictEqual(
+      typeof result.pieceSize,
+      'number',
+      'Should extract a numeric pieceSize',
+    )
+    assert.strictEqual(
+      result.pieceCid.constructor.name,
+      'CID',
+      'Should extract a CID object',
+    )
     assert.strictEqual(
       debugMessages.length,
       0,
@@ -843,13 +947,19 @@ describe('extractPieceCidFromContextID', () => {
     )
   })
   const TEST_PIECE_CIDS = [
-    CID.parse('baga6ea4seaqpyzrxp423g6akmu3i2dnd7ymgf37z7m3nwhkbntt3stbocbroqdq'),
-    CID.parse('baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja'),
+    CID.parse(
+      'baga6ea4seaqpyzrxp423g6akmu3i2dnd7ymgf37z7m3nwhkbntt3stbocbroqdq',
+    ),
+    CID.parse(
+      'baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja',
+    ),
   ]
   for (const pieceCid of TEST_PIECE_CIDS) {
     it('should handle multiple successful extractions', () => {
       const validContextID = createValidContextID(validPieceSize, pieceCid)
-      const result = extractPieceInfoFromContextID(validContextID, { logDebugMessage })
+      const result = extractPieceInfoFromContextID(validContextID, {
+        logDebugMessage,
+      })
 
       assert.notStrictEqual(result, null)
       assert.ok(result !== null)
@@ -867,13 +977,18 @@ describe('extractPieceCidFromContextID', () => {
 describe('processEntries', () => {
   // Use a real DAG-JSON CID that will naturally have codec 0x0129 (297)
   // CIDs that start with 'bagu' are DAG-JSON encoded
-  const dagJsonCid = 'baguqeeraa5mjufqdwuwrrrqboctnn3vhdlq63rj3hce2igpzbmae7sazkfea'
+  const dagJsonCid =
+    'baguqeeraa5mjufqdwuwrrrqboctnn3vhdlq63rj3hce2igpzbmae7sazkfea'
   // Use a real DAG-CBOR CID that will naturally have codec 0x71 (113)
   // CIDs that start with 'bafy' are DAG-CBOR encoded
-  const dagCborCid = 'bafyreibpxkmu65ezxy7rynxotbghfz3ktiapjisntepd67hghfn4hde3na'
+  const dagCborCid =
+    'bafyreibpxkmu65ezxy7rynxotbghfz3ktiapjisntepd67hghfn4hde3na'
   const testData = 'test data for multihash'
   // Create a proper multihash from this digest
-  const mh = multihash.create(0x12, crypto.createHash('sha256').update(testData).digest())
+  const mh = multihash.create(
+    0x12,
+    crypto.createHash('sha256').update(testData).digest(),
+  )
   const entryBytes = Buffer.from(mh.bytes).toString('base64')
   const dagJsonChunk = {
     Entries: [
@@ -906,7 +1021,10 @@ describe('processEntries', () => {
 
   // Error handling tests
   it('throws an error when entries array is empty', () => {
-    assert.throws(() => processEntries(dagCborCid, { Entries: [] }), /No entries found/)
+    assert.throws(
+      () => processEntries(dagCborCid, { Entries: [] }),
+      /No entries found/,
+    )
   })
 
   it('throws an error when Entries field is missing', () => {
@@ -920,9 +1038,13 @@ describe('processEntries', () => {
 
   it('throws an error for unsupported codec', () => {
     // Use a CID with an unsupported codec
-    const unsupportedCid = 'bafkreigrnnl64xuevvkhknbhrcqzbdvvmqnchp7ae2a4ulninsjoc5svoq'
+    const unsupportedCid =
+      'bafkreigrnnl64xuevvkhknbhrcqzbdvvmqnchp7ae2a4ulninsjoc5svoq'
 
-    assert.throws(() => processEntries(unsupportedCid, dagJsonChunk), /Unsupported codec/)
+    assert.throws(
+      () => processEntries(unsupportedCid, dagJsonChunk),
+      /Unsupported codec/,
+    )
   })
 
   // Data integrity test using real multihash operations
@@ -934,7 +1056,11 @@ describe('processEntries', () => {
     const expectedCid = CID.create(1, 0x55, mh).toString()
 
     // They should match
-    assert.strictEqual(result, expectedCid, 'CID should match the one created directly')
+    assert.strictEqual(
+      result,
+      expectedCid,
+      'CID should match the one created directly',
+    )
   })
 
   // Test with entries from CBOR encoding/decoding
@@ -946,7 +1072,11 @@ describe('processEntries', () => {
     const expectedCid = CID.create(1, 0x55, mh).toString()
 
     // They should match
-    assert.strictEqual(result, expectedCid, 'CID should match the one created directly')
+    assert.strictEqual(
+      result,
+      expectedCid,
+      'CID should match the one created directly',
+    )
   })
 
   // Error case tests with real data
@@ -962,7 +1092,10 @@ describe('processEntries', () => {
     }
 
     // We expect an error when processing this malformed data
-    assert.throws(() => processEntries(dagJsonCid, malformedChunk), /Incorrect length/)
+    assert.throws(
+      () => processEntries(dagJsonCid, malformedChunk),
+      /Incorrect length/,
+    )
   })
 
   it('handles invalid multihash in DAG-CBOR gracefully', () => {
@@ -971,19 +1104,24 @@ describe('processEntries', () => {
     }
 
     // We expect an error when processing this invalid multihash
-    assert.throws(() => processEntries(dagCborCid, invalidChunk), /Incorrect length/)
+    assert.throws(
+      () => processEntries(dagCborCid, invalidChunk),
+      /Incorrect length/,
+    )
   })
 })
 
 describe('fetchCid', () => {
   // Use a real DAG-JSON CID that will naturally have codec 0x0129 (297)
   // CIDs that start with 'bagu' are DAG-JSON encoded
-  const dagJsonCid = 'baguqeerayzpbdctxk4iyps45uldgibsvy6zro33vpfbehggivhcxcq5suaia'
+  const dagJsonCid =
+    'baguqeerayzpbdctxk4iyps45uldgibsvy6zro33vpfbehggivhcxcq5suaia'
   // Sample JSON response
   const testResponse = { test: 'value' }
   // Use a real DAG-CBOR CID that will naturally have codec 0x71 (113)
   // CIDs that start with 'bafy' are DAG-CBOR encoded
-  const dagCborCid = 'bafyreictdikh363qfxsmjp63i6kup6aukjqfpd4r6wbhbiz2ctuji4bofm'
+  const dagCborCid =
+    'bafyreictdikh363qfxsmjp63i6kup6aukjqfpd4r6wbhbiz2ctuji4bofm'
 
   it('uses DAG-JSON codec (0x0129) to parse response as JSON', async () => {
     // Mock fetch to return JSON
@@ -1001,7 +1139,9 @@ describe('fetchCid', () => {
     const parsedCid = CID.parse(dagJsonCid)
     assert.strictEqual(parsedCid.code, 297)
 
-    const result = await fetchCid('http://example.com', dagJsonCid, { fetchFn: mockFetch })
+    const result = await fetchCid('http://example.com', dagJsonCid, {
+      fetchFn: mockFetch,
+    })
 
     // Verify we got the JSON response
     assert.deepStrictEqual(result, testResponse)
@@ -1024,7 +1164,9 @@ describe('fetchCid', () => {
     const parsedCid = CID.parse(dagCborCid)
     assert.strictEqual(parsedCid.code, 113)
 
-    const result = await fetchCid('http://example.com', dagCborCid, { fetchFn: mockFetch })
+    const result = await fetchCid('http://example.com', dagCborCid, {
+      fetchFn: mockFetch,
+    })
 
     // Verify we got the decoded CBOR data
     assert.deepStrictEqual(result, testResponse)
@@ -1038,12 +1180,15 @@ describe('fetchCid', () => {
 
     // Use a CID with a codec that is neither DAG-JSON (0x0129) nor DAG-CBOR (0x71)
     // This is a raw codec (0x55) CID
-    const unknownCodecCid = 'bafkreigrnnl64xuevvkhknbhrcqzbdvvmqnchp7ae2a4ulninsjoc5svoq'
+    const unknownCodecCid =
+      'bafkreigrnnl64xuevvkhknbhrcqzbdvvmqnchp7ae2a4ulninsjoc5svoq'
     const parsedCid = CID.parse(unknownCodecCid)
     assert.strictEqual(parsedCid.code, 85)
     const errorMessage = 'Unknown codec 85'
     try {
-      await fetchCid('http://example.com', unknownCodecCid, { fetchFn: mockFetch })
+      await fetchCid('http://example.com', unknownCodecCid, {
+        fetchFn: mockFetch,
+      })
       assert.fail('fetchCid should have thrown an error')
     } catch (error) {
       assert(error instanceof Error, 'Error should be an instance of Error')
@@ -1057,13 +1202,17 @@ describe('fetchCid', () => {
     // Use a real Curio provider and known DAG-CBOR CID
     const curioProviderUrl =
       'https://f03303347-market.duckdns.org/ipni-provider/12D3KooWJ91c6xQshrNe7QAXPFAaeRrHWq2UrgXGPf8UmMZMwyZ5'
-    const dagCborCid = 'baguqeeracgnw2ecmhaa6qkb3irrgjjk5zt5fes7wwwpb4aymoaogzyvvbrma'
+    const dagCborCid =
+      'baguqeeracgnw2ecmhaa6qkb3irrgjjk5zt5fes7wwwpb4aymoaogzyvvbrma'
     /** @type {unknown} */
     let result = await pRetry(() => fetchCid(curioProviderUrl, dagCborCid))
 
     // Verify the result has the expected structure for DAG-CBOR entries
     assert(result, 'Expected a non-null result')
-    assert(typeof result === 'object' && result !== null, 'Result should be an object')
+    assert(
+      typeof result === 'object' && result !== null,
+      'Result should be an object',
+    )
 
     /** @type {Record<string, unknown>} */
     const resultObj = /** @type {Record<string, unknown>} */ (result)
@@ -1082,8 +1231,8 @@ describe('fetchCid', () => {
 
     /** @type {unknown} */
     result = await pRetry(() => fetchCid(curioProviderUrl, entriesCid))
-    /** @type {{ Entries: unknown[]; }} */
-    const entriesChunk = /** @type {{ Entries: unknown[]; }} */ (result)
+    /** @type {{ Entries: unknown[] }} */
+    const entriesChunk = /** @type {{ Entries: unknown[] }} */ (result)
     const payloadCid = processEntries(entriesCid, entriesChunk)
     console.log(payloadCid)
     assert.deepStrictEqual(

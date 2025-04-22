@@ -1,29 +1,10 @@
 /**
-lastAdCID --> [ ] -\
-               ↓    |
-              ...   | entries announced after we started the current walk
-               ↓    |
-              [ ] -/
-               ↓
-     head --> [ ] -\
-               ↓    |
-              ...   | entries visited in this walk
-               ↓    |
-              [ ] -/
-               ↓
-     tail --> [ ] -\
-               ↓    |
-              ...   | entries NOT visited yet
-               ↓    |
-              [ ] -/
-               ↓
- lastHead --> [ ] -\
-               ↓    |
-              ...   | entries visited in the previous walks
-               ↓    |
-              [ ] -/
-               ↓
-             (null)
+ * LastAdCID --> [ ] -\
+ * ↓ | ... | entries announced after we started the current walk ↓ | [ ] -/ ↓
+ * head --> [ ] -\
+ * ↓ | ... | entries visited in this walk ↓ | [ ] -/ ↓ tail --> [ ] -\
+ * ↓ | ... | entries NOT visited yet ↓ | [ ] -/ ↓ lastHead --> [ ] -\
+ * ↓ | ... | entries visited in the previous walks ↓ | [ ] -/ ↓ (null)
  */
 export interface WalkerState {
   head?: string

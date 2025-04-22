@@ -1,9 +1,7 @@
 import { once } from 'node:events'
 import http from 'node:http'
 
-/**
- * @param {http.RequestListener} handler
- */
+/** @param {http.RequestListener} handler */
 export async function givenHttpServer(handler) {
   const server = http.createServer((req, res) => {
     // Wrap the handler() call in an async function block to ensure synchronously thrown errors
@@ -21,7 +19,9 @@ export async function givenHttpServer(handler) {
   server.listen(0, '127.0.0.1')
   server.unref()
   await once(server, 'listening')
-  const serverPort = /** @type {import('node:net').AddressInfo} */ (server.address()).port
+  const serverPort = /** @type {import('node:net').AddressInfo} */ (
+    server.address()
+  ).port
   const serverUrl = `http://127.0.0.1:${serverPort}/`
   return { server, serverPort, serverUrl }
 }

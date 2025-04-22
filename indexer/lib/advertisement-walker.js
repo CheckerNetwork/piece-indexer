@@ -9,8 +9,8 @@ import timers from 'node:timers/promises'
 import { assertOkResponse } from 'assert-ok-response'
 import pRetry from 'p-retry'
 
-/** @import { ProviderInfo, WalkerState } from './typings.js' */
-/** @import { RedisRepository as Repository } from '@filecoin-station/spark-piece-indexer-repository' */
+/** @import {ProviderInfo, WalkerState} from './typings.js' */
+/** @import {RedisRepository as Repository} from '@filecoin-station/spark-piece-indexer-repository' */
 
 const debug = createDebug('spark-piece-indexer:advertisement-walker')
 
@@ -38,7 +38,12 @@ export async function walkChain({
     let failed = false
     /** @type {WalkerState | undefined} */
     try {
-      const result = await walkOneStep({ repository, providerId, providerInfo, walkerState })
+      const result = await walkOneStep({
+        repository,
+        providerId,
+        providerInfo,
+        walkerState,
+      })
       walkerState = result.walkerState
       debug('Got new walker state for provider %s: %o', providerId, walkerState)
       if (result.finished) break
@@ -104,21 +109,30 @@ export async function walkOneStep({
     )
     walkerState = await repository.getWalkerState(providerId)
   } else {
-    debug('REUSING walker state for provider %s (%s)', providerId, providerInfo.providerAddress)
+    debug(
+      'REUSING walker state for provider %s (%s)',
+      providerId,
+      providerInfo.providerAddress,
+    )
   }
-  const { newState, indexEntry, failed, finished } = await processNextAdvertisement({
-    providerId,
-    providerInfo,
-    walkerState,
-    fetchTimeout,
-  })
+  const { newState, indexEntry, failed, finished } =
+    await processNextAdvertisement({
+      providerId,
+      providerInfo,
+      walkerState,
+      fetchTimeout,
+    })
 
   if (newState) {
     await repository.setWalkerState(providerId, newState)
     walkerState = newState
   }
   if (indexEntry?.pieceCid) {
-    await repository.addPiecePayloadBlocks(providerId, indexEntry.pieceCid, indexEntry.payloadCid)
+    await repository.addPiecePayloadBlocks(
+      providerId,
+      indexEntry.pieceCid,
+      indexEntry.payloadCid,
+    )
   }
   return { failed, finished, walkerState }
 }
@@ -165,7 +179,11 @@ export async function processNextAdvertisement({
     )
     state = { ...walkerState }
   } else if (nextHead === walkerState?.lastHead) {
-    debug('No new advertisements from provider %s (%s)', providerId, providerInfo.providerAddress)
+    debug(
+      'No new advertisements from provider %s (%s)',
+      providerId,
+      providerInfo.providerAddress,
+    )
     return { finished: true }
   } else {
     debug(
@@ -186,13 +204,15 @@ export async function processNextAdvertisement({
   assert(state.tail)
 
   try {
-    const { previousAdvertisementCid, entry, error } = await fetchAdvertisedPayload(
-      providerInfo.providerAddress,
-      state.tail,
-      { fetchTimeout },
-    )
+    const { previousAdvertisementCid, entry, error } =
+      await fetchAdvertisedPayload(providerInfo.providerAddress, state.tail, {
+        fetchTimeout,
+      })
 
-    if (!previousAdvertisementCid || previousAdvertisementCid === state.lastHead) {
+    if (
+      !previousAdvertisementCid ||
+      previousAdvertisementCid === state.lastHead
+    ) {
       // We finished the walk
       state.lastHead = state.head
       state.head = undefined
@@ -218,7 +238,10 @@ export async function processNextAdvertisement({
       finished,
     }
   } catch (err) {
-    const errorDescription = describeFetchError(err, providerInfo.providerAddress)
+    const errorDescription = describeFetchError(
+      err,
+      providerInfo.providerAddress,
+    )
 
     debug(
       'Cannot process provider %s (%s) advertisement %s: %s',
@@ -279,20 +302,26 @@ export async function fetchAdvertisedPayload(
   advertisementCid,
   { fetchTimeout } = {},
 ) {
-  const advertisement = /** @type {{
-      Addresses: string[],
-      ContextID: { '/': { bytes: string } },
-      Entries: { '/': string },
-      IsRm: false,
-      Metadata: { '/': { bytes: string } },
-      PreviousID?: { '/': string },
-      Provider: string
-      Signature: {
-        '/': {
-          bytes: string
-        }
-      }
-     }} */ (await pRetry(() => fetchCid(providerAddress, advertisementCid, { fetchTimeout })))
+  const advertisement = /**
+   * @type {{
+   *   Addresses: string[]
+   *   ContextID: { '/': { bytes: string } }
+   *   Entries: { '/': string }
+   *   IsRm: false
+   *   Metadata: { '/': { bytes: string } }
+   *   PreviousID?: { '/': string }
+   *   Provider: string
+   *   Signature: {
+   *     '/': {
+   *       bytes: string
+   *     }
+   *   }
+   * }}
+   */ (
+    await pRetry(() =>
+      fetchCid(providerAddress, advertisementCid, { fetchTimeout }),
+    )
+  )
   const previousAdvertisementCid = advertisement.PreviousID?.['/']
   debug('advertisement %s %j', advertisementCid, advertisement)
 
@@ -301,11 +330,17 @@ export async function fetchAdvertisedPayload(
     // An empty advertisement with no entries
     // See https://github.com/ipni/ipni-cli/blob/512ef8294eb717027b72e572897fbd8a1ed74564/pkg/adpub/client_store.go#L46-L48
     // https://github.com/ipni/go-libipni/blob/489479457101ffe3cbe80682570b63c12ba2546d/ingest/schema/schema.go#L65-L71
-    debug('advertisement %s has no entries: %j', advertisementCid, advertisement.Entries)
+    debug(
+      'advertisement %s has no entries: %j',
+      advertisementCid,
+      advertisement.Entries,
+    )
     return { previousAdvertisementCid }
   }
 
-  let pieceCid = extractPieceInfoFromContextID(advertisement.ContextID)?.pieceCid?.toString()
+  let pieceCid = extractPieceInfoFromContextID(
+    advertisement.ContextID,
+  )?.pieceCid?.toString()
   let meta
   if (!pieceCid) {
     meta = parseMetadata(advertisement.Metadata['/'].bytes)
@@ -329,20 +364,31 @@ export async function fetchAdvertisedPayload(
   try {
     entriesChunk = await pRetry(
       () =>
-        /** @type {Promise<{
-          Entries: { '/' :  { bytes: string } }[]
-        }>} */ (fetchCid(providerAddress, entriesCid, { fetchTimeout })),
+        /**
+         * @type {Promise<{
+         *   Entries: { '/': { bytes: string } }[]
+         * }>}
+         */ (fetchCid(providerAddress, entriesCid, { fetchTimeout })),
       {
         shouldRetry: (err) =>
-          err && 'statusCode' in err && typeof err.statusCode === 'number' && err.statusCode >= 500,
+          err &&
+          'statusCode' in err &&
+          typeof err.statusCode === 'number' &&
+          err.statusCode >= 500,
       },
     )
   } catch (err) {
     // We are not able to fetch the advertised entries. Skip this advertisement so that we can
     // continue the ingestion of other advertisements.
     const errorDescription = describeFetchError(err, providerAddress)
-    const log = /** @type {any} */ (err)?.statusCode === 404 ? debug : console.warn
-    log('Cannot fetch ad %s entries %s: %s', advertisementCid, entriesCid, errorDescription ?? err)
+    const log =
+      /** @type {any} */ (err)?.statusCode === 404 ? debug : console.warn
+    log(
+      'Cannot fetch ad %s entries %s: %s',
+      advertisementCid,
+      entriesCid,
+      errorDescription ?? err,
+    )
     return {
       error: /** @type {const} */ ('ENTRIES_NOT_RETRIEVABLE'),
       previousAdvertisementCid,
@@ -374,7 +420,11 @@ export async function fetchAdvertisedPayload(
  * @param {typeof fetch} [options.fetchFn]
  * @returns {Promise<unknown>}
  */
-export async function fetchCid(providerBaseUrl, cid, { fetchTimeout, fetchFn } = {}) {
+export async function fetchCid(
+  providerBaseUrl,
+  cid,
+  { fetchTimeout, fetchFn } = {},
+) {
   let url = new URL(providerBaseUrl)
 
   // Check if the URL already has a path
@@ -422,9 +472,7 @@ export async function fetchCid(providerBaseUrl, cid, { fetchTimeout, fetchFn } =
   }
 }
 
-/**
- * @param {string} meta
- */
+/** @param {string} meta */
 export function parseMetadata(meta) {
   const bytes = Buffer.from(meta, 'base64')
   const [protocolCode, nextOffset] = varint.decode(bytes)
@@ -438,11 +486,13 @@ export function parseMetadata(meta) {
 
   if (protocol === 'graphsync') {
     // console.log(bytes.subarray(nextOffset).toString('hex'))
-    /** @type {{
-    PieceCID: import('multiformats/cid').CID,
-    VerifiedDeal: boolean,
-    FastRetrieval: boolean
-    }} */
+    /**
+     * @type {{
+     *   PieceCID: import('multiformats/cid').CID
+     *   VerifiedDeal: boolean
+     *   FastRetrieval: boolean
+     * }}
+     */
     const deal = cbor.decode(bytes.subarray(nextOffset))
     return { protocol, deal }
   } else {
@@ -453,16 +503,24 @@ export function parseMetadata(meta) {
 /**
  * Attempts to extract PieceCID and PieceSize from a ContextID
  *
- * @param {{'/': {bytes: string}}|undefined | null} contextID - The ContextID object from an advertisement
+ * @param {{ '/': { bytes: string } } | undefined | null} contextID - The
+ *   ContextID object from an advertisement
  * @param {object} [options]
  * @param {function} [options.logDebugMessage] - Function to log debug messages
- * @returns {{pieceCid: string;pieceSize: number}|null} - Object containing pieceCid and pieceSize if successful, null otherwise
+ * @returns {{ pieceCid: string; pieceSize: number } | null} - Object containing
+ *   pieceCid and pieceSize if successful, null otherwise
  */
-export function extractPieceInfoFromContextID(contextID, { logDebugMessage } = {}) {
+export function extractPieceInfoFromContextID(
+  contextID,
+  { logDebugMessage } = {},
+) {
   logDebugMessage ??= debug
   // Check if ContextID exists and has the expected structure
   if (!contextID || !contextID['/'] || !contextID['/'].bytes) {
-    logDebugMessage('Advertisement %s has no properly formatted ContextID', contextID)
+    logDebugMessage(
+      'Advertisement %s has no properly formatted ContextID',
+      contextID,
+    )
     return null
   }
 
@@ -526,14 +584,20 @@ export function extractPieceInfoFromContextID(contextID, { logDebugMessage } = {
 
     return { pieceCid, pieceSize }
   } catch (err) {
-    logDebugMessage('Failed to decode ContextID for advertisement %s: %s', contextID, err)
+    logDebugMessage(
+      'Failed to decode ContextID for advertisement %s: %s',
+      contextID,
+      err,
+    )
     return null
   }
 }
 
-/** Process entries from either DAG-JSON or DAG-CBOR format
+/**
+ * Process entries from either DAG-JSON or DAG-CBOR format
+ *
  * @param {string} entriesCid - The CID of the entries
- * @param {{Entries: Array<unknown>}} entriesChunk - The decoded entries
+ * @param {{ Entries: unknown[] }} entriesChunk - The decoded entries
  * @returns {string} The payload CID
  */
 export function processEntries(entriesCid, entriesChunk) {
@@ -555,13 +619,21 @@ export function processEntries(entriesCid, entriesChunk) {
 
       // Verify the '/' property is an object with 'bytes' property
       // In DAG-JSON, CIDs are represented as objects with a '/' property that contains 'bytes'
-      if (!entry['/'] || typeof entry['/'] !== 'object' || !('bytes' in entry['/'])) {
-        throw new Error('DAG-JSON entry\'s "/" property must be an object with a "bytes" property')
+      if (
+        !entry['/'] ||
+        typeof entry['/'] !== 'object' ||
+        !('bytes' in entry['/'])
+      ) {
+        throw new Error(
+          'DAG-JSON entry\'s "/" property must be an object with a "bytes" property',
+        )
       }
 
       const entryHash = entry['/'].bytes
       if (typeof entryHash !== 'string') {
-        throw new Error('DAG-JSON entry\'s ["/"]["bytes"] property must be a string')
+        throw new Error(
+          'DAG-JSON entry\'s ["/"]["bytes"] property must be a string',
+        )
       }
       entryBytes = Buffer.from(entryHash, 'base64')
       break
@@ -570,7 +642,10 @@ export function processEntries(entriesCid, entriesChunk) {
       // DAG-CBOR
       // For DAG-CBOR format, the entry is already a Uint8Array with the multihash
       entryBytes = entriesChunk.Entries[0]
-      assert(entryBytes instanceof Uint8Array, 'DAG-CBOR entry must be a Uint8Array')
+      assert(
+        entryBytes instanceof Uint8Array,
+        'DAG-CBOR entry must be a Uint8Array',
+      )
       break
     }
     default:
