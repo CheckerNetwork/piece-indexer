@@ -12,6 +12,7 @@ jobs:
       matrix:
         dependencyStartsWith:
           - spark-evaluate
+          - '@checkernetwork/prettier-config'
     steps:
       - name: Dependabot metadata
         id: metadata
