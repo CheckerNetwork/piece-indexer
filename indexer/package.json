@@ -1,14 +1,11 @@
 {
   "name": "@filecoin-station/spark-piece-indexer",
-  "type": "module",
   "private": true,
+  "type": "module",
   "scripts": {
-    "start": "node bin/piece-indexer.js",
     "lint": "standard",
+    "start": "node bin/piece-indexer.js",
     "test": "node --test --test-reporter=spec"
-  },
-  "devDependencies": {
-    "standard": "^17.1.2"
   },
   "dependencies": {
     "@filecoin-station/spark-piece-indexer-repository": "^1.0.0",
@@ -19,5 +16,8 @@
     "ioredis": "^5.6.1",
     "multiformats": "^13.3.2",
     "p-retry": "^6.2.1"
+  },
+  "devDependencies": {
+    "standard": "^17.1.2"
   }
 }

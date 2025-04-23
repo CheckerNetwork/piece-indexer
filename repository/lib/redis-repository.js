@@ -1,12 +1,10 @@
-/** @import { WalkerState } from './typings.d.ts' */
+/** @import {WalkerState} from './typings.d.ts' */
 
 export class RedisRepository {
   #redis
 
-  /**
-   * @param {import('ioredis').Redis} redis
-   */
-  constructor (redis) {
+  /** @param {import('ioredis').Redis} redis */
+  constructor(redis) {
     this.#redis = redis
   }
 
@@ -14,7 +12,7 @@ export class RedisRepository {
    * @param {string} providerId
    * @returns {Promise<WalkerState>}
    */
-  async getWalkerState (providerId) {
+  async getWalkerState(providerId) {
     const json = await this.#redis.get(`walker-state:${providerId}`)
     return json ? JSON.parse(json) : undefined
   }
@@ -23,7 +21,7 @@ export class RedisRepository {
    * @param {string} providerId
    * @param {WalkerState} state
    */
-  async setWalkerState (providerId, state) {
+  async setWalkerState(providerId, state) {
     const data = JSON.stringify(state)
     await this.#redis.set(`walker-state:${providerId}`, data)
   }
@@ -33,8 +31,11 @@ export class RedisRepository {
    * @param {string} pieceCid
    * @param {string[]} payloadCids
    */
-  async addPiecePayloadBlocks (providerId, pieceCid, ...payloadCids) {
-    await this.#redis.sadd(`piece-payload:${providerId}:${pieceCid}`, ...payloadCids)
+  async addPiecePayloadBlocks(providerId, pieceCid, ...payloadCids) {
+    await this.#redis.sadd(
+      `piece-payload:${providerId}:${pieceCid}`,
+      ...payloadCids,
+    )
   }
 
   /**
@@ -42,18 +43,18 @@ export class RedisRepository {
    * @param {string} pieceCid
    * @returns {Promise<string[]>}
    */
-  async getPiecePayloadBlocks (providerId, pieceCid) {
-    const payloadCids = await this.#redis.smembers(`piece-payload:${providerId}:${pieceCid}`)
+  async getPiecePayloadBlocks(providerId, pieceCid) {
+    const payloadCids = await this.#redis.smembers(
+      `piece-payload:${providerId}:${pieceCid}`,
+    )
     return payloadCids
   }
 
-  /**
-   * @param {string} providerId
-   */
-  async countPiecesIndexed (providerId) {
+  /** @param {string} providerId */
+  async countPiecesIndexed(providerId) {
     const keyStream = this.#redis.scanStream({
       match: `piece-payload:${providerId}:*`,
-      count: 64_000
+      count: 64_000,
     })
 
     // We need to de-duplicate the keys returned by Redis.
