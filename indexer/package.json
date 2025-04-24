@@ -10,7 +10,7 @@
   "dependencies": {
     "@filecoin-station/spark-piece-indexer-repository": "^1.0.0",
     "@ipld/dag-cbor": "^9.2.2",
-    "@sentry/node": "^9.13.0",
+    "@sentry/node": "^9.14.0",
     "assert-ok-response": "^1.0.0",
     "debug": "^4.4.0",
     "ioredis": "^5.6.1",
