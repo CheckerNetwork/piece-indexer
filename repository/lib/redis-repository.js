@@ -10,7 +10,7 @@ export class RedisRepository {
 
   /**
    * @param {string} providerId
-   * @returns {Promise<WalkerState>}
+   * @returns {Promise<WalkerState | undefined>}
    */
   async getWalkerState(providerId) {
     const json = await this.#redis.get(`walker-state:${providerId}`)

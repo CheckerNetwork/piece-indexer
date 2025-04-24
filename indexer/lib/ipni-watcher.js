@@ -6,7 +6,7 @@ import { multiaddrToHttpUrl } from './vendored/multiaddr.js'
 
 const debug = createDebug('spark-piece-indexer:ipni-watcher')
 
-/** @import {ProviderToInfoMap, ProviderInfo} from './typings.js' */
+/** @import {CidProviderEntry, ProviderToInfoMap, ProviderInfo} from './typings.js' */
 
 /**
  * @param {object} args
@@ -44,23 +44,7 @@ export async function getProvidersWithMetadata() {
   const res = await fetch('https://cid.contact/providers')
   assertOkResponse(res)
 
-  const providers = /**
-   * @type {{
-   *   AddrInfo: {
-   *     ID: string
-   *     Addrs: string[]
-   *   }
-   *   LastAdvertisement: {
-   *     '/': string
-   *   }
-   *   LastAdvertisementTime: string
-   *   Publisher: {
-   *     ID: string
-   *     Addrs: string[]
-   *   }
-   *   // Ignored: ExtendedProviders, FrozenAt
-   * }[]}
-   */ (await res.json())
+  const providers = /** @type {CidProviderEntry[]} */ (await res.json())
 
   /** @type {[string, ProviderInfo][]} */
   const entries = providers.map((p) => {

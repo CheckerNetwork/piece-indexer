@@ -630,10 +630,10 @@ describe('data schema for REST API', () => {
       // Discussion point:
       // We don't have providerAddress in the walker state.
       // Is it a problem if our observability API does not tell the provider address?
-      ingestionStatus: walkerState.status,
-      lastHeadWalkedFrom: walkerState.lastHead ?? walkerState.head,
-      adsMissingPieceCID: walkerState.adsMissingPieceCID ?? 0,
-      entriesNotRetrievable: walkerState.entriesNotRetrievable ?? 0,
+      ingestionStatus: walkerState?.status,
+      lastHeadWalkedFrom: walkerState?.lastHead ?? walkerState?.head,
+      adsMissingPieceCID: walkerState?.adsMissingPieceCID ?? 0,
+      entriesNotRetrievable: walkerState?.entriesNotRetrievable ?? 0,
       piecesIndexed: await repository.countPiecesIndexed(providerId),
     }
 
