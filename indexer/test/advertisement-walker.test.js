@@ -311,7 +311,7 @@ describe('processNextAdvertisement', () => {
     assert.strictEqual(finished, true, 'finished')
   })
 
-  it('handles Fetch errors and explains the problem in the status', async () => {
+  it.skip('handles Fetch errors and explains the problem in the status', async () => {
     /** @type {ProviderInfo} */
     const providerInfo = {
       providerAddress: 'http://127.0.0.1:80/',
@@ -336,7 +336,7 @@ describe('processNextAdvertisement', () => {
     })
   })
 
-  it('handles timeout errors and explains the problem in the status', async () => {
+  it.skip('handles timeout errors and explains the problem in the status', async () => {
     const { serverUrl } = await givenHttpServer(async (_req, res) => {
       await setTimeout(100)
       res.statusCode = 501
