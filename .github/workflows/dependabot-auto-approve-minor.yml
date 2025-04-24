@@ -11,9 +11,10 @@ jobs:
     strategy:
       matrix:
         dependencyStartsWith:
+          - '@checkernetwork/prettier-config'
           - '@sentry/'
           - '@types/'
-          - standard
+          - neostandard
           - typescript
           - prettier
           - debug
