@@ -3,7 +3,7 @@ import assert from 'node:assert'
 import { after, before, beforeEach, describe, it } from 'node:test'
 import { RedisRepository } from '../lib/redis-repository.js'
 
-/** @import { WalkerState } from '../lib/typings.d.ts' */
+/** @import {WalkerState} from '../lib/typings.d.ts' */
 
 describe('data schema for REST API', () => {
   /** @type {Redis} */
@@ -30,7 +30,7 @@ describe('data schema for REST API', () => {
       head: 'head',
       tail: 'tail',
       lastHead: 'last head',
-      status: 'status'
+      status: 'status',
     }
 
     await repository.setWalkerState('providerId', state)
