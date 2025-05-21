@@ -17,7 +17,7 @@
     "assert-ok-response": "^1.0.0",
     "debug": "^4.4.1",
     "ioredis": "^5.6.1",
-    "multiformats": "^13.3.2",
+    "multiformats": "^13.3.6",
     "p-retry": "^6.2.1"
   }
 }
