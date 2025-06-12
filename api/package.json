@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@filecoin-station/spark-piece-indexer-repository": "^1.0.0",
-    "@sentry/node": "^9.22.0",
+    "@sentry/node": "^9.28.1",
     "fastify": "^5.3.3",
     "ioredis": "^5.6.1"
   }
