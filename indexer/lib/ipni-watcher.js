@@ -7,6 +7,7 @@ import { multiaddrToHttpUrl } from './vendored/multiaddr.js'
 const debug = createDebug('spark-piece-indexer:ipni-watcher')
 
 /** @import {ProviderToInfoMap, ProviderInfo} from './typings.js' */
+/** @import {IpniCidQueryResponse} from './ipni-api.js' */
 
 /**
  * @param {object} args
@@ -44,27 +45,7 @@ export async function getProvidersWithMetadata() {
   const res = await fetch('https://cid.contact/providers')
   assertOkResponse(res)
 
-  // Note: prettier-plugin-jsdoc formats the following JSDoc type definition
-  // incorrectly and produces a JSDoc comment that TypeScript interprets
-  // as a definition of an object, not an array of objects. We need to disable
-  // prettier here.
-  // prettier-ignore
-  const providers = /** @type {{
-    AddrInfo: {
-      ID: string
-      Addrs: string[]
-    }
-    LastAdvertisement: {
-      '/': string
-    }
-    LastAdvertisementTime: string
-    Publisher: {
-      ID: string
-      Addrs: string[]
-    }
-    // Ignored: ExtendedProviders, FrozenAt
-   }[]}
-   */ (await res.json())
+  const providers = /** @type {IpniCidQueryResponse} */ (await res.json())
 
   /** @type {[string, ProviderInfo][]} */
   const entries = providers.map((p) => {
