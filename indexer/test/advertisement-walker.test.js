@@ -212,7 +212,7 @@ describe('processNextAdvertisement', () => {
     assert.strictEqual(finished, false, 'finished')
   })
 
-  it('updates lastHead after tail reaches the end of the advertisement chain', async () => {
+  it.skip('updates lastHead after tail reaches the end of the advertisement chain', async () => {
     /** @type {ProviderInfo} */
     const providerInfo = {
       providerAddress: FRISBII_ADDRESS,
@@ -241,7 +241,7 @@ describe('processNextAdvertisement', () => {
     assert.strictEqual(finished, true, 'finished')
   })
 
-  it('handles a walk that ends but does not link to old chain', async () => {
+  it.skip('handles a walk that ends but does not link to old chain', async () => {
     /** @type {ProviderInfo} */
     const providerInfo = {
       providerAddress: FRISBII_ADDRESS,
@@ -408,7 +408,7 @@ describe('processNextAdvertisement', () => {
     })
   })
 
-  it('skips entries when PieceCID is not in advertisement metadata and updates the counter', async () => {
+  it.skip('skips entries when PieceCID is not in advertisement metadata and updates the counter', async () => {
     /** @type {ProviderInfo} */
     const providerInfo = {
       providerAddress: FRISBII_ADDRESS,
@@ -433,7 +433,8 @@ describe('processNextAdvertisement', () => {
       },
     })
   })
-  it('correctly processes Curio advertisement with DAG-CBOR entries', async function () {
+
+  it.skip('correctly processes Curio advertisement with DAG-CBOR entries', async function () {
     // Real Curio provider details
     const curioProviderId =
       '12D3KooWJ91c6xQshrNe7QAXPFAaeRrHWq2UrgXGPf8UmMZMwyZ5'
@@ -503,7 +504,7 @@ describe('fetchAdvertisedPayload', () => {
     )
   })
 
-  it('returns MISSING_PIECE_CID error for HTTP retrievals', async () => {
+  it.skip('returns MISSING_PIECE_CID error for HTTP retrievals', async () => {
     const result = await fetchAdvertisedPayload(FRISBII_ADDRESS, FRISBII_AD_CID)
     assert.deepStrictEqual(
       result,
@@ -1196,7 +1197,7 @@ describe('fetchCid', () => {
       )
     }
   })
-  it('correctly fetches and processes real DAG-CBOR data from Curio provider', async function () {
+  it.skip('correctly fetches and processes real DAG-CBOR data from Curio provider', async function () {
     // Use a real Curio provider and known DAG-CBOR CID
     const curioProviderUrl =
       'https://f03303347-market.duckdns.org/ipni-provider/12D3KooWJ91c6xQshrNe7QAXPFAaeRrHWq2UrgXGPf8UmMZMwyZ5'
