@@ -22,7 +22,7 @@
     "lint:fix": "eslint --fix && prettier --write .",
     "test": "npm run lint && npm run test:types && npm run test:unit",
     "test:types": "tsc -p .",
-    "test:unit": "npm test --workspaces --if-present"
+    "test:unit": "npm test --workspaces --if-present -- --test-timeout=5000"
   },
   "prettier": "@checkernetwork/prettier-config",
   "devDependencies": {
