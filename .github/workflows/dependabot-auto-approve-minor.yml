@@ -14,6 +14,7 @@ jobs:
           - '@checkernetwork/prettier-config'
           - '@sentry/'
           - '@types/'
+          - eslint
           - neostandard
           - typescript
           - prettier
@@ -22,6 +23,7 @@ jobs:
           - multiformats
           - ioredis
           - fastify
+          - node
     steps:
       - name: Dependabot metadata
         id: metadata
