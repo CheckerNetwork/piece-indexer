@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/node'
 import createDebug from 'debug'
 import timers from 'node:timers/promises'
 import { assertOkResponse } from 'assert-ok-response'
@@ -30,7 +29,6 @@ export async function* runIpniSync({ minSyncIntervalInMs, signal }) {
       yield providers
     } catch (err) {
       console.error('Cannot sync from IPNI.', err)
-      Sentry.captureException(err)
     }
     const delay = minSyncIntervalInMs - (Date.now() - started)
     if (delay > 0) {

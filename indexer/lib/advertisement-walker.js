@@ -1,5 +1,5 @@
 import * as cbor from '@ipld/dag-cbor'
-import * as Sentry from '@sentry/node'
+
 import createDebug from 'debug'
 import { varint } from 'multiformats'
 import { CID } from 'multiformats/cid'
@@ -56,12 +56,6 @@ export async function walkChain({
         providerInfo.providerAddress,
         err,
       )
-      Sentry.captureException(err, {
-        extra: {
-          providerId,
-          providerAddress: providerInfo.providerAddress,
-        },
-      })
     }
 
     if (failed) {

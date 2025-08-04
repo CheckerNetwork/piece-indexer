@@ -1,5 +1,3 @@
-import '../lib/instrument.js'
-
 import { createApp } from '../lib/app.js'
 import { RedisRepository } from '@filecoin-station/spark-piece-indexer-repository'
 import { Redis } from 'ioredis'

@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/node'
 import Fastify from 'fastify'
 
 /**
@@ -9,7 +8,6 @@ import Fastify from 'fastify'
  */
 export function createApp({ repository, domain, logger }) {
   const app = Fastify({ logger })
-  Sentry.setupFastifyErrorHandler(app)
 
   if (typeof domain === 'string') {
     app.addHook('onRequest', async (request, reply) => {
