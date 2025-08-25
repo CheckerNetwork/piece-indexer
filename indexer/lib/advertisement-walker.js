@@ -364,11 +364,11 @@ export async function fetchAdvertisedPayload(
          * }>}
          */ (fetchCid(providerAddress, entriesCid, { fetchTimeout })),
       {
-        shouldRetry: (err) =>
-          err &&
-          'statusCode' in err &&
-          typeof err.statusCode === 'number' &&
-          err.statusCode >= 500,
+        shouldRetry: ({ error }) =>
+          error &&
+          'statusCode' in error &&
+          typeof error.statusCode === 'number' &&
+          error.statusCode >= 500,
       },
     )
   } catch (err) {
