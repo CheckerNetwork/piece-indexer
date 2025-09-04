@@ -12,6 +12,7 @@ jobs:
       matrix:
         dependencyStartsWith:
           - '@checkernetwork/prettier-config'
+          - '@ipld/dag-cbor'
           - '@types/'
           - eslint
           - neostandard
