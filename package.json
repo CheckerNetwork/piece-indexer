@@ -28,7 +28,7 @@
   "devDependencies": {
     "@checkernetwork/prettier-config": "^1.0.1",
     "@types/debug": "^4.1.12",
-    "@types/node": "^22.18.1",
+    "@types/node": "^22.18.3",
     "eslint": "^9.35.0",
     "neostandard": "^0.12.2",
     "prettier": "^3.5.3",
