@@ -13,7 +13,7 @@
     "assert-ok-response": "^1.0.0",
     "debug": "^4.4.3",
     "ioredis": "^5.7.0",
-    "multiformats": "^13.4.0",
+    "multiformats": "^13.4.1",
     "p-retry": "^7.0.0"
   },
   "devDependencies": {
