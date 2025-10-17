@@ -528,7 +528,7 @@ export function extractPieceInfoFromContextID(
     // Validate the decoded data with specific error messages
     if (!Array.isArray(decoded)) {
       logDebugMessage(
-        'ContextID validation failed for %s: decoded value is not an array, got %s',
+        'ContextID validation failed for %o: decoded value is not an array, got %s',
         contextID,
         typeof decoded,
       )
@@ -537,7 +537,7 @@ export function extractPieceInfoFromContextID(
 
     if (decoded.length !== 2) {
       logDebugMessage(
-        'ContextID validation failed for %s: expected array with 2 items, got %d items',
+        'ContextID validation failed for %o: expected array with 2 items, got %d items',
         contextID,
         decoded.length,
       )
@@ -546,7 +546,7 @@ export function extractPieceInfoFromContextID(
     const [pieceSize, pieceCid] = decoded
     if (typeof pieceSize !== 'number') {
       logDebugMessage(
-        'ContextID validation failed for %s: pieceSize is not a number, got %s',
+        'ContextID validation failed for %o: pieceSize is not a number, got %s',
         contextID,
         typeof decoded[0],
       )
@@ -579,7 +579,7 @@ export function extractPieceInfoFromContextID(
     return { pieceCid, pieceSize }
   } catch (err) {
     logDebugMessage(
-      'Failed to decode ContextID for advertisement %s: %s',
+      'Failed to decode ContextID for advertisement %o: %s',
       contextID,
       err,
     )
