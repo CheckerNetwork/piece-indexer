@@ -1154,7 +1154,7 @@ describe('fetchCid', () => {
     /** @type {typeof fetch} */
     const mockFetch = () => {
       return Promise.resolve(
-        new Response(cborData.buffer, {
+        new Response(new Uint8Array(cborData.buffer), {
           status: 200,
           headers: { 'Content-Type': 'application/cbor' },
         }),
