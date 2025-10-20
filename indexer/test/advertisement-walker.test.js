@@ -26,8 +26,9 @@ import { multiaddrToHttpUrl } from '../lib/vendored/multiaddr.js'
 /** @import {ProviderInfo, WalkerState} from '../lib/typings.js' */
 
 // TODO(bajtos) We may need to replace this with a mock index provider
-const providerId = '12D3KooWHKeaNCnYByQUMS2n5PAZ1KZ9xKXqsb4bhpxVJ6bBJg5V'
-const providerAddress = 'http://f010479.twinquasar.io:3104'
+const providerId = '12D3KooWGzSJjWq2rgd8FH6jyLX6vUQiTTKnpTWwuXJvd9E1dEyH'
+const providerAddress = 'http://113.23.169.21:13105/'
+
 // The advertisement chain looks this way:
 //
 //  adCid - advertises payloadCid and pieceCid
@@ -38,13 +39,13 @@ const providerAddress = 'http://f010479.twinquasar.io:3104'
 //    ↓
 //  (...)
 const knownAdvertisement = {
-  adCid: 'baguqeerarbmakqcnzzuhki25xs357xyin4ieqxvumrp5cy7s44v7tzwwmg3q',
+  adCid: 'baguqeeraigc6c25bcq4yymclxwubzxlrvoff7rgx5cqwfopix4cauildruiq',
   previousAdCid:
-    'baguqeerau2rz67nvzcaotgowm2olalanx3eynr2asbjwdkaq3y5umqvdi2ea',
+    'baguqeeraqv7oo6b3quhgi77ayf4oanm4xa446eext5i4vxsgj2f2t335ug2q',
   previousPreviousAdCid:
-    'baguqeeraa5mjufqdwuwrrrqboctnn3vhdlq63rj3hce2igpzbmae7sazkfea',
-  payloadCid: 'bafkreigrnnl64xuevvkhknbhrcqzbdvvmqnchp7ae2a4ulninsjoc5svoq',
-  pieceCid: 'baga6ea4seaqlwzed5tgjtyhrugjziutzthx2wrympvsuqhfngwdwqzvosuchmja',
+    'baguqeeraob3pmpaono4x5c62f2glddl6f642a3tuvfweab7oaiukdoiegdpq',
+  payloadCid: 'bafkreiac2wue7xyfwips7rhgbv5dcgcepgwm4ysnpqpyba3totga3arowe',
+  pieceCid: 'baga6ea4seaqmkgz3m2u242763l5rc2pyl2mar56zczbbf3mbzlmyjlgyzaplabi',
 }
 describe('processNextAdvertisement', () => {
   it('ignores non-HTTP(s) addresses and explains the problem in the status', async () => {
@@ -1153,7 +1154,7 @@ describe('fetchCid', () => {
     /** @type {typeof fetch} */
     const mockFetch = () => {
       return Promise.resolve(
-        new Response(cborData.buffer, {
+        new Response(new Uint8Array(cborData.buffer), {
           status: 200,
           headers: { 'Content-Type': 'application/cbor' },
         }),
