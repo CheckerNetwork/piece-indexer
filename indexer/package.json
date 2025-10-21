@@ -14,7 +14,7 @@
     "debug": "^4.4.3",
     "ioredis": "^5.8.1",
     "multiformats": "^13.4.1",
-    "p-retry": "^7.0.0"
+    "p-retry": "^7.1.0"
   },
   "devDependencies": {
     "standard": "^17.1.2"
