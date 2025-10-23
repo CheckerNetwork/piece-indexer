@@ -24,7 +24,7 @@ jobs:
           - ioredis
           - fastify
           - node
-          - p-retry
+          - p-
     steps:
       - name: Dependabot metadata
         id: metadata
